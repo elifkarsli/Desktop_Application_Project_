@@ -9,6 +9,7 @@ import Desktop_Application_Project_.model.DomainModels.Classroom;
 import Desktop_Application_Project_.ExamPeriod;
 import Desktop_Application_Project_.parser.Parser;
 import Desktop_Application_Project_.parser.impl.CoreParsers;
+import Desktop_Application_Project_.service.ConflictChecker;
 import Desktop_Application_Project_.service.DataValidator;
 import Desktop_Application_Project_.service.FinalWriter;
 import Desktop_Application_Project_.service.FixedExamService;
@@ -24,7 +25,7 @@ public class UniversitySchedulerApp {
     public static void main(String[] args) {
         System.out.println("--- Starting University Exam Scheduler Import ---");
 
-        File studentFile = new File("Desktop_Application_Project_\\CSV_Files\\attendance.csv");
+        File studentFile = new File("Desktop_Application_Project_\\CSV_Files\\students.csv");
         File courseFile = new File("Desktop_Application_Project_\\CSV_Files\\courses.csv");
         File classroomFile = new File("Desktop_Application_Project_\\CSV_Files\\clasrooms.csv");
         File attendanceFile = new File("Desktop_Application_Project_\\CSV_Files\\attendance.csv");
@@ -118,6 +119,47 @@ public class UniversitySchedulerApp {
                 } else {
                     System.out.println("    No fixed exam file found. Skipping.");
                 }
+
+                // [6b] Standard Exam Placement (Student + Capacity Control)
+                System.out.println("\n[6b] Assigning Regular Exams with Conflict Checking...");
+
+                ConflictChecker checker = new ConflictChecker();
+
+                for (Course course : enrolledCourses) {
+
+                    int studentCount = course.getEnrolledStudents().size();
+                    boolean assigned = false;
+
+                    for (int day = 1; day <= totalDays && !assigned; day++) {
+                        for (int slot = 1; slot <= slotsPerDay && !assigned; slot++) {
+
+                            if (examPeriod.getExamMatrix()[day - 1][slot - 1] != null) {
+                                continue;
+                            }
+
+                            for (Classroom classroom : classrooms) {
+
+                                boolean studentConflict =
+                                        checker.hasStudentConflict(course, day, slot, examPeriod, enrolledCourses);
+
+                                boolean capacityOk =
+                                        checker.isRoomCapacityOk(classroom, studentCount);
+
+                                if (!studentConflict && capacityOk) {
+                                    examPeriod.assignExam(day - 1, slot - 1, course.getCourseCode());
+                                    assigned = true;
+                                    break;
+                                }
+                            }
+
+                        }
+                    }
+
+                    if (!assigned) {
+                        System.out.println("Could not assign exam for course: " + course.getCourseCode());
+                    }
+                }
+                examPeriod.printExamSchedule();
 
                 // [7] Write Output
                 System.out.println("\n[7] Writing Final Output...");
