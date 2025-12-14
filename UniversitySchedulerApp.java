@@ -1,19 +1,20 @@
 package Desktop_Application_Project_;
 
-import SamProd_Desktop_Application_Project.exception.DataImportException;
-import SamProd_Desktop_Application_Project.gui.SchedulerGUI;
-import SamProd_Desktop_Application_Project.model.DomainModels;
-import SamProd_Desktop_Application_Project.model.DomainModels.Classroom;
-import SamProd_Desktop_Application_Project.model.DomainModels.Course;
-import SamProd_Desktop_Application_Project.model.DomainModels.Student;
-import SamProd_Desktop_Application_Project.ExamPeriod; // FIX 1: Added Import
-import SamProd_Desktop_Application_Project.service.FixedExamService;
-import SamProd_Desktop_Application_Project.parser.Parser;
-import SamProd_Desktop_Application_Project.parser.impl.CoreParsers;
-import SamProd_Desktop_Application_Project.service.DataValidator;
-import SamProd_Desktop_Application_Project.service.FinalWriter;
+import Desktop_Application_Project_.exception.DataImportException;
+import Desktop_Application_Project_.gui.SchedulerGUI;
+import Desktop_Application_Project_.model.DomainModels;
+import Desktop_Application_Project_.model.DomainModels.Student;
+import Desktop_Application_Project_.model.DomainModels.Course;
+import Desktop_Application_Project_.model.DomainModels.Classroom;
+import Desktop_Application_Project_.ExamPeriod;
+import Desktop_Application_Project_.parser.Parser;
+import Desktop_Application_Project_.parser.impl.CoreParsers;
+import Desktop_Application_Project_.service.DataValidator;
+import Desktop_Application_Project_.service.FinalWriter;
+import Desktop_Application_Project_.service.FixedExamService;
 
-import javax.swing.SwingUtilities;
+
+import javax.swing.*;
 import java.io.File;
 import java.util.Collections;
 import java.util.List;
@@ -23,12 +24,10 @@ public class UniversitySchedulerApp {
     public static void main(String[] args) {
         System.out.println("--- Starting University Exam Scheduler Import ---");
 
-        // Note: Consider using relative paths (e.g., "CSV_Files/students.csv") 
-        // so this works on your teammates' computers too.
-        File studentFile = new File("D:\\Desktop_Application_Project\\CSV_Files\\students.csv");
-        File courseFile = new File("D:\\Desktop_Application_Project\\CSV_Files\\courses.csv");
-        File classroomFile = new File("D:\\Desktop_Application_Project\\CSV_Files\\clasrooms.csv");
-        File attendanceFile = new File("D:\\Desktop_Application_Project\\CSV_Files\\attendance.csv");
+        File studentFile = new File("Desktop_Application_Project_\\CSV_Files\\attendance.csv");
+        File courseFile = new File("Desktop_Application_Project_\\CSV_Files\\courses.csv");
+        File classroomFile = new File("Desktop_Application_Project_\\CSV_Files\\clasrooms.csv");
+        File attendanceFile = new File("Desktop_Application_Project_\\CSV_Files\\attendance.csv");
 
         String outputPath = "output/result.txt";
 
@@ -90,42 +89,44 @@ public class UniversitySchedulerApp {
                 int slotsPerDay = 4;    
 
                 ExamPeriod examPeriod = new ExamPeriod(totalDays, slotsPerDay);
-                System.out.println("\n[6] ExamPeriod created: " + examPeriod);
+                System.out.println("\n[6] ExamPeriod created: " + totalDays + " Days, " + slotsPerDay + " Slots.");
 
-                // [6a] Fixed Exams (FR4–FR13) — dosyadan oku
+                // [6a] Fixed Exams logic
                 File fixedExamFile = new File("D:\\Desktop_Application_Project\\CSV_Files\\fixed_exams.csv");
                 FixedExamService fixedExamService = new FixedExamService();
-                List<DomainModels.FixedExam> fixedExams = Collections.emptyList();
+
 
                 if (fixedExamFile.exists()) {
+                    System.out.println("    Processing Fixed Exams...");
                     Parser<DomainModels.FixedExam> fixedExamParser = new CoreParsers.FixedExamParser();
-                    fixedExams = fixedExamParser.parse(fixedExamFile);
+                    List<DomainModels.FixedExam> fixedExams = fixedExamParser.parse(fixedExamFile);
 
                     for (DomainModels.FixedExam fx : fixedExams) {
                         try {
-                            fixedExamService.addFixedExam(fx); // çakışma kontrolü burada
+                            fixedExamService.addFixedExam(fx); // conflict check
+                            
+                            // Assign to matrix (Day - 1 because CSV is usually 1-based)
+                            boolean assigned = examPeriod.assignFixedExam(fx.getDay() - 1, fx.getSlot() - 1, fx.getCourseCode());
+                            if (!assigned) {
+                                System.out.println("    WARNING: Slot occupied or out of bounds for " + fx);
+                            }
                         } catch (IllegalArgumentException e) {
-                            System.out.println("Conflict detected: " + e.getMessage());
+                            System.out.println("    Conflict detected: " + e.getMessage());
                         }
                     }
-                    // Matrisi doldur
-                    for (DomainModels.FixedExam fx : fixedExamService.getFixedExams()) {
-                        boolean assigned = examPeriod.assignFixedExam(fx.getDay() - 1, fx.getSlot() - 1, fx.getCourseCode());
-                        if (!assigned) {
-                            System.out.println("Slot already occupied for " + fx);
-                        }
-                    }
-                    // Matrisi yazdır
                     examPeriod.printExamSchedule();
-                } else {}
+                } else {
+                    System.out.println("    No fixed exam file found. Skipping.");
+                }
 
-                // İLERDE: scheduler algoritması examPeriod üzerinden çalışacak
                 // [7] Write Output
                 System.out.println("\n[7] Writing Final Output...");
                 FinalWriter writer = new FinalWriter();
                 writer.writeOutput(classrooms, students, masterCourses, enrolledCourses, outputPath);
+                
+                System.out.println("--- Execution Finished Successfully ---");
 
-                // [8] Launch GUI
+                // Launch GUI
                 System.out.println("\n[8] Launching GUI...");
 
                 List<Student> finalStudents = students;
@@ -148,10 +149,10 @@ public class UniversitySchedulerApp {
                 errors.forEach(e -> System.out.println("      - " + e));
             }
 
-        } catch (DataImportException e) { // FIX 2: Added specific Catch for your custom exception
+        } catch (DataImportException e) {
             System.err.println("Error importing data: " + e.getMessage());
             e.printStackTrace();
-        } catch (Exception e) { // FIX 3: Added generic Catch for unexpected errors
+        } catch (Exception e) {
             System.err.println("An unexpected error occurred: " + e.getMessage());
             e.printStackTrace();
         }

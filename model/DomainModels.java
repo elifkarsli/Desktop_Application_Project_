@@ -1,4 +1,4 @@
-package Desktop_Application_Project_.model; // Added underscore
+package Desktop_Application_Project_.model;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -62,11 +62,67 @@ public class DomainModels {
             this.name = name.trim();
             this.capacity = capacity;
         }
-
         public String getName() { return name; }
         public int getCapacity() { return capacity; }
 
         @Override
         public String toString() { return "Classroom{name='" + name + "', capacity=" + capacity + "}"; }
     }
+
+        //  ExamPeriod entity
+        public static class ExamPeriod {
+            private final int totalDays;
+            private final int slotsPerDay;
+            private final String[][] examMatrix;
+
+            public ExamPeriod(int totalDays, int slotsPerDay) {
+                if (totalDays <= 0 || slotsPerDay <= 0) {
+                    throw new IllegalArgumentException("totalDays and slotsPerDay must be positive");
+                }
+                this.totalDays = totalDays;
+                this.slotsPerDay = slotsPerDay;
+                this.examMatrix = new String[totalDays][slotsPerDay];
+            }
+
+            public int getTotalDays() {
+                return totalDays;
+            }
+
+            public int getSlotsPerDay() {
+                return slotsPerDay;
+            }
+
+            public String[][] getExamMatrix() {
+                return examMatrix;
+            }
+        
+            
+        }
+        // Fixed Exam entity
+        public static class FixedExam {
+            private final String courseCode;
+            private final int day;
+            private final int slot;
+            private final String classroom;
+            private final boolean locked;
+
+            public FixedExam(String courseCode, int day, int slot, String classroom) {
+                this.courseCode = courseCode;
+                this.day = day;
+                this.slot = slot;
+                this.classroom = classroom;
+                this.locked = true; // fixed exam is always locked
+            }
+
+            public String getCourseCode() { return courseCode; }
+            public int getDay() { return day; }
+            public int getSlot() { return slot; }
+            public String getClassroom() { return classroom; }
+            public boolean isLocked() { return locked; }
+
+            @Override
+            public String toString() {
+                return "[Fixed] " + courseCode + " @ Day " + day + ", Slot " + slot + " (" + classroom + ")";
+            }
+        }
 }

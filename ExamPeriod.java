@@ -1,8 +1,10 @@
+package Desktop_Application_Project_;
+
 public class ExamPeriod {
 
-    private int totalDays;        // Kaç gün sınav olacak
-    private int slotsPerDay;      // Gün başına kaç sınav slotu
-    private String[][] examMatrix; // Gün slot matrisi
+    private int totalDays;
+    private int slotsPerDay;
+    private String[][] examMatrix;
 
     public ExamPeriod(int totalDays, int slotsPerDay) {
         this.totalDays = totalDays;
@@ -38,7 +40,7 @@ public class ExamPeriod {
     }
     public boolean assignFixedExam(int day, int slot, String courseCode) {
         if (examMatrix[day][slot] != null) {
-            return false; // slot dolu
+            return false;
         }
         examMatrix[day][slot] = "[FIXED] " + courseCode;
         return true;

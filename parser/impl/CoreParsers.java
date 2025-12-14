@@ -1,4 +1,4 @@
-package Desktop_Application_Project_.parser.impl; // Added underscore
+package Desktop_Application_Project_.parser.impl;
 
 import Desktop_Application_Project_.exception.DataImportException; // Added underscore
 import Desktop_Application_Project_.model.DomainModels.*; // Added underscore
@@ -132,6 +132,46 @@ public class CoreParsers {
                 if (!id.isEmpty()) ids.add(id);
             }
             return ids;
+        }
+    }
+    // service.FixedExam Parser
+    public static class FixedExamParser implements Parser<FixedExam> {
+
+        private static final String DELIMITER = ",";
+
+        @Override
+        public List<FixedExam> parse(File file) throws DataImportException {
+            List<FixedExam> fixedExams = new ArrayList<>();
+            try (BufferedReader br = new BufferedReader(new FileReader(file))) {
+                String line;
+                boolean isHeader = true;
+                while ((line = br.readLine()) != null) {
+                    if (isHeader) { isHeader = false; continue; }
+                    if (line.trim().isEmpty()) continue;
+
+                    String[] parts = line.split(DELIMITER);
+                    if (parts.length < 4) {
+                        Logger.getLogger(CoreParsers.class.getName())
+                                .log(Level.WARNING, "Malformed fixed exam line: {0}", line);
+                        continue;
+                    }
+
+                    try {
+                        String courseCode = parts[0].trim();
+                        int day = Integer.parseInt(parts[1].trim());
+                        int slot = Integer.parseInt(parts[2].trim());
+                        String classroom = parts[3].trim();
+
+                        fixedExams.add(new FixedExam(courseCode, day, slot, classroom));
+                    } catch (NumberFormatException e) {
+                        Logger.getLogger(CoreParsers.class.getName())
+                                .log(Level.WARNING, "Invalid day/slot format: {0}", line);
+                    }
+                }
+            } catch (IOException e) {
+                throw new DataImportException("Failed to read service.FixedExam file: " + file.getName(), e);
+            }
+            return fixedExams;
         }
     }
 }
