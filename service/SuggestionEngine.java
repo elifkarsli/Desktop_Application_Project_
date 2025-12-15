@@ -5,15 +5,13 @@ import Desktop_Application_Project_.model.DomainModels.Classroom;
 import Desktop_Application_Project_.model.DomainModels.Course;
 import Desktop_Application_Project_.model.DomainModels.FixedExam;
 
+import java.util.ArrayList;
 import java.util.List;
 
-
-// Service responsible for suggesting changes to the exam period configuration  when the scheduler fails to place all courses.
-
- 
+// This class helps us find a solution if the scheduler fails.
+// It tries to see if adding more days or slots would fix the problem.
 public class SuggestionEngine {
 
-    
     public void analyzeAndSuggest(
             List<Course> allCourses,
             List<Classroom> classrooms,
@@ -22,68 +20,77 @@ public class SuggestionEngine {
             int currentSlots
     ) {
         System.out.println("\n=================================================");
-        System.out.println("   [!] SCHEDULE INCOMPLETE - SUGGESTION");
+        System.out.println("   [!] SCHEDULE INCOMPLETE - LOOKING FOR SOLUTIONS");
         System.out.println("=================================================");
-        System.out.println("Analysis: Current config (" + currentDays + " Days, " + currentSlots + " Slots) is insufficient.");
-        System.out.println("Calculating alternatives...");
+        System.out.println("Analysis: Current setup (" + currentDays + " Days, " + currentSlots + " Slots) is not enough.");
+        System.out.println("Thinking of alternatives...");
 
-        ExamSchedulerService testScheduler = new ExamSchedulerService();
         boolean foundSolution = false;
 
-        // Strategy 1: Suggest extending the Exam Period (Add Days) ** extra 5 days
+        // A 1: Try adding more days (up to 5 extra days)
         for (int i = 1; i <= 5; i++) {
             int targetDays = currentDays + i;
-            if (simulate(testScheduler, allCourses, classrooms, fixedExams, targetDays, currentSlots)) {
+            
+            // Check if this new number of days works
+            if (simulate(allCourses, classrooms, fixedExams, targetDays, currentSlots)) {
                 System.out.println("\n>>> SUGGESTION A: Add " + i + " Day(s)");
-                System.out.println("    New Configuration: " + targetDays + " Days, " + currentSlots + " Slots.");
-                System.out.println("    Result: All exams can be placed successfully.");
+                System.out.println("    New Config: " + targetDays + " Days, " + currentSlots + " Slots.");
+                System.out.println("    Result: Everything fits perfectly!");
                 foundSolution = true;
-                break; // Stop after finding the smallest increase
+                break; // We found the smallest number of days needed
             }
         }
 
-        // Strategy 2: Suggest extending Daily Capacity (Add Slots) ** extra 3 slots
-        for (int i = 1; i <= 3; i++) {
-            int targetSlots = currentSlots + i;
-            if (simulate(testScheduler, allCourses, classrooms, fixedExams, currentDays, targetSlots)) {
-                System.out.println("\n>>> SUGGESTION B: Add " + i + " Slot(s) per Day");
-                System.out.println("    New Configuration: " + currentDays + " Days, " + targetSlots + " Slots.");
-                System.out.println("    Result: All exams can be placed successfully.");
-                foundSolution = true;
-                break;
-            }
-        }
-
+        // A 2: If adding days didn't work, try adding more slots per day (up to 3 extra slots)
         if (!foundSolution) {
-            System.out.println("\n>>> SUGGESTION C: Significant constraint issue detected.");
-            System.out.println("    Consider both increasing days AND slots, or checking for massive student conflicts.");
+            for (int i = 1; i <= 3; i++) {
+                int targetSlots = currentSlots + i;
+                if (simulate(allCourses, classrooms, fixedExams, currentDays, targetSlots)) {
+                    System.out.println("\n>>> SUGGESTION B: Add " + i + " Slot(s) per Day");
+                    System.out.println("    New Config: " + currentDays + " Days, " + targetSlots + " Slots.");
+                    System.out.println("    Result: Everything fits perfectly!");
+                    foundSolution = true;
+                    break;
+                }
+            }
+        }
+
+        // If nothing worked...
+        if (!foundSolution) {
+            System.out.println("\n>>> SUGGESTION C: We have a big problem.");
+            System.out.println("    Maybe try increasing BOTH days and slots, or check if students have too many overlapping exams.");
         }
         System.out.println("=================================================\n");
     }
 
-     // Runs a simulation with specific Day/Slot parameters to see if it works.
+    // This helper method runs a "simulation" to see if a specific day/slot combo works.
     private boolean simulate(
-            ExamSchedulerService scheduler,
             List<Course> courses,
             List<Classroom> classrooms,
             List<FixedExam> fixedExams,
             int d, int s
     ) {
-        // Create temp ExamPeriod
+        // 1. Create a temporary exam period for testing
         ExamPeriod testPeriod = new ExamPeriod(d, s);
         
-        //  Pre-assign Fixed Exams (handling 1-based index from CSV)
+        // We need a fresh scheduler for this test
+        ExamSchedulerService scheduler = new ExamSchedulerService();
+        
+        // 2. Put the fixed exams into the calendar first
         for (FixedExam fx : fixedExams) {
-            // Only assign if it fits in the new dimensions
+            // Only add them if they fit in our new day/slot limits
             if (fx.getDay() <= d && fx.getSlot() <= s) {
+                // Placing the fixed exam (subtract 1 because arrays start at 0)
                 testPeriod.assignFixedExam(fx.getDay() - 1, fx.getSlot() - 1, fx.getCourseCode());
             }
         }
 
-        // 3. Try Scheduling Regular Exams
-        List<Course> unplaced = scheduler.scheduleRegularExams(courses, classrooms, testPeriod);
+        // 3. Try to schedule the normal exams
+        List<Course> coursesCopy = new ArrayList<>(courses);
+
+        List<Course> unplaced = scheduler.scheduleRegularExams(coursesCopy, classrooms, testPeriod);
         
-        // 4. If list is empty, simulation was successful
+        // 4. If the 'unplaced' list is empty, it means everything fit!
         return unplaced.isEmpty();
     }
 }
