@@ -117,13 +117,7 @@ public class UniversitySchedulerApp {
                 }
 
                 // [6a.5] Impossible Situation Analysis
-<<<<<<< Updated upstream
                 System.out.println("\n[6a.5] Checking impossible situations...");
-
-=======
-                // Assuming you have the ImpossibleSituationChecker class
-                System.out.println("\n[6a.5] Checking impossible situations...");
->>>>>>> Stashed changes
                 ImpossibleSituationChecker checker = new ImpossibleSituationChecker();
                 checker.check(
                         examPeriod,
@@ -131,10 +125,6 @@ public class UniversitySchedulerApp {
                         classrooms,
                         fixedExamService.getFixedExams().size()
                 );
-<<<<<<< Updated upstream
-
-=======
->>>>>>> Stashed changes
                 System.out.println("    Impossible situation check passed.");
 
                 // [6b] Assigning Regular Exams using improved scheduling algorithm
