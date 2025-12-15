@@ -15,7 +15,7 @@ public class FixedExamService {
         if (isConflict(fixedExam)) {
             throw new IllegalArgumentException("Fixed exam conflict detected!");
         }
-        fixedExams.add(fixedExam);
+        fixedExams.add(fixedExam);  
     }
 
     public boolean isConflict(FixedExam exam) {

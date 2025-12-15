@@ -2,15 +2,13 @@ package Desktop_Application_Project_;
 
 import Desktop_Application_Project_.exception.DataImportException;
 import Desktop_Application_Project_.gui.SchedulerGUI;
-import Desktop_Application_Project_.model.DomainModels;
 import Desktop_Application_Project_.model.DomainModels.Student;
 import Desktop_Application_Project_.model.DomainModels.Course;
 import Desktop_Application_Project_.model.DomainModels.Classroom;
-import Desktop_Application_Project_.ExamPeriod;
+import Desktop_Application_Project_.model.DomainModels.FixedExam; // Added explicit import
 import Desktop_Application_Project_.parser.Parser;
 import Desktop_Application_Project_.parser.impl.CoreParsers;
 import Desktop_Application_Project_.service.*;
-
 
 import javax.swing.*;
 import java.io.File;
@@ -26,6 +24,7 @@ public class UniversitySchedulerApp {
         File courseFile  = new File("CSV_Files/courses.csv");
         File classroomFile    = new File("CSV_Files/classrooms.csv");
         File attendanceFile  = new File("CSV_Files/attendance.csv");
+        File fixedExamFile = new File("CSV_Files/fixed_exams.csv");
 
         String outputPath = "output/result.txt";
 
@@ -83,23 +82,23 @@ public class UniversitySchedulerApp {
                 System.out.println("    SUCCESS: All data is valid.");
 
                 // [6] Create ExamPeriod configuration (FR3)
-                int totalDays = 5;      
-                int slotsPerDay = 4;    
+                int totalDays = 5;
+                int slotsPerDay = 4;
 
                 ExamPeriod examPeriod = new ExamPeriod(totalDays, slotsPerDay);
                 System.out.println("\n[6] ExamPeriod created: " + totalDays + " Days, " + slotsPerDay + " Slots.");
 
                 // [6a] Fixed Exams logic
-                File fixedExamFile = new File("D:\\Desktop_Application_Project\\CSV_Files\\fixed_exams.csv");
                 FixedExamService fixedExamService = new FixedExamService();
-
+                
+                List<FixedExam> fixedExams = Collections.emptyList(); 
 
                 if (fixedExamFile.exists()) {
                     System.out.println("    Processing Fixed Exams...");
-                    Parser<DomainModels.FixedExam> fixedExamParser = new CoreParsers.FixedExamParser();
-                    List<DomainModels.FixedExam> fixedExams = fixedExamParser.parse(fixedExamFile);
+                    Parser<FixedExam> fixedExamParser = new CoreParsers.FixedExamParser();
+                    fixedExams = fixedExamParser.parse(fixedExamFile); // Assign to the outer variable
 
-                    for (DomainModels.FixedExam fx : fixedExams) {
+                    for (FixedExam fx : fixedExams) {
                         try {
                             fixedExamService.addFixedExam(fx); // conflict check
                             
@@ -118,8 +117,13 @@ public class UniversitySchedulerApp {
                 }
 
                 // [6a.5] Impossible Situation Analysis
+<<<<<<< Updated upstream
                 System.out.println("\n[6a.5] Checking impossible situations...");
 
+=======
+                // Assuming you have the ImpossibleSituationChecker class
+                System.out.println("\n[6a.5] Checking impossible situations...");
+>>>>>>> Stashed changes
                 ImpossibleSituationChecker checker = new ImpossibleSituationChecker();
                 checker.check(
                         examPeriod,
@@ -127,7 +131,10 @@ public class UniversitySchedulerApp {
                         classrooms,
                         fixedExamService.getFixedExams().size()
                 );
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
                 System.out.println("    Impossible situation check passed.");
 
                 // [6b] Assigning Regular Exams using improved scheduling algorithm
@@ -135,18 +142,28 @@ public class UniversitySchedulerApp {
 
                 ExamSchedulerService schedulerService = new ExamSchedulerService();
 
-                List<Course> unplacedCourses =
-                        schedulerService.scheduleRegularExams(
-                                enrolledCourses,
-                                classrooms,
-                                examPeriod
-                        );
+                List<Course> unplacedCourses = schedulerService.scheduleRegularExams(
+                        enrolledCourses,
+                        classrooms,
+                        examPeriod
+                );
 
                 if (!unplacedCourses.isEmpty()) {
                     System.out.println("\nUnplaced courses:");
                     for (Course c : unplacedCourses) {
                         System.out.println(" - " + c.getCourseCode());
                     }
+
+                    System.out.println("\n[!] Triggering Suggestion Engine...");
+                    SuggestionEngine suggestionEngine = new SuggestionEngine();
+                    suggestionEngine.analyzeAndSuggest(
+                            enrolledCourses,
+                            classrooms,
+                            fixedExams, 
+                            totalDays,
+                            slotsPerDay
+                    );
+                    // -----------------------------------------------
                 }
 
                 examPeriod.printExamSchedule();
@@ -158,13 +175,13 @@ public class UniversitySchedulerApp {
                 
                 System.out.println("--- Execution Finished Successfully ---");
 
-                // Launch GUI
+                // [8] Launch GUI
                 System.out.println("\n[8] Launching GUI...");
 
-                List<Student> finalStudents = students;
-                List<Classroom> finalClassrooms = classrooms;
-                List<Course> finalMasterCourses = masterCourses;
-                List<Course> finalEnrolledCourses = enrolledCourses;
+                final List<Student> finalStudents = students;
+                final List<Classroom> finalClassrooms = classrooms;
+                final List<Course> finalMasterCourses = masterCourses;
+                final List<Course> finalEnrolledCourses = enrolledCourses;
 
                 SwingUtilities.invokeLater(() -> {
                     SchedulerGUI gui = new SchedulerGUI(
