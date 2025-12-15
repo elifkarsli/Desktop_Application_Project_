@@ -6,12 +6,17 @@ import Desktop_Application_Project_.model.DomainModels.Classroom;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class ExamSchedulerService {
 
     private final ConflictChecker conflictChecker = new ConflictChecker();
 
+    // Optimization status
+    private Map<Integer, Integer> examsPerDay;
+    private Map<Classroom, Integer> classroomUsage;
 
     public List<Course> scheduleRegularExams(
             List<Course> courses,
@@ -20,6 +25,18 @@ public class ExamSchedulerService {
     ) {
 
         List<Course> unplacedCourses = new ArrayList<>();
+
+        // Initial optimization map
+        examsPerDay = new HashMap<>();
+        classroomUsage = new HashMap<>();
+
+        for (int day = 1; day <= examPeriod.getTotalDays(); day++) {
+            examsPerDay.put(day, 0);
+        }
+
+        for (Classroom classroom : classrooms) {
+            classroomUsage.put(classroom, 0);
+        }
 
         // 1: Prioritize courses (more students first)
         courses.sort(
@@ -58,11 +75,11 @@ public class ExamSchedulerService {
                             continue;
                         }
 
-                        // Simple heuristic scoring
-                        int score = calculateScore(day, slot, examPeriod);
+                        // Optimized score
+                        int score = calculateScore(day, slot, examPeriod, classroom);
 
                         if (bestPlacement == null || score > bestPlacement.score) {
-                            bestPlacement = new Placement(day, slot, score);
+                            bestPlacement = new Placement(day, slot, score, classroom);
                         }
                     }
                 }
@@ -75,6 +92,18 @@ public class ExamSchedulerService {
                         bestPlacement.slot - 1,
                         course.getCourseCode()
                 );
+
+                // Update optimization state
+                examsPerDay.put(
+                        bestPlacement.day,
+                        examsPerDay.get(bestPlacement.day) + 1
+                );
+
+                classroomUsage.put(
+                        bestPlacement.classroom,
+                        classroomUsage.get(bestPlacement.classroom) + 1
+                );
+
             } else {
                 unplacedCourses.add(course);
                 System.out.println(
@@ -86,23 +115,47 @@ public class ExamSchedulerService {
         return unplacedCourses;
     }
 
-    private int calculateScore(int day, int slot, ExamPeriod examPeriod) {
+    // Enhanced score funtion
+    private int calculateScore(
+            int day,
+            int slot,
+            ExamPeriod examPeriod,
+            Classroom classroom
+    ) {
+
         int score = 0;
+
+        // Original heuristic (KEPT, not removed)
         score += (examPeriod.getTotalDays() - day) * 10;
         score += (examPeriod.getSlotsPerDay() - slot) * 5;
+
+
+        // Day balance
+        score -= examsPerDay.get(day) * 15;
+
+        // Last day penalty
+        if (day == examPeriod.getTotalDays()) {
+            score -= 50;
+        }
+
+        // Classroom balance
+        score -= classroomUsage.get(classroom) * 10;
+
         return score;
     }
 
-
+    // Internal placement class
     private static class Placement {
         int day;
         int slot;
         int score;
+        Classroom classroom;
 
-        Placement(int day, int slot, int score) {
+        Placement(int day, int slot, int score, Classroom classroom) {
             this.day = day;
             this.slot = slot;
             this.score = score;
+            this.classroom = classroom;
         }
     }
 }
