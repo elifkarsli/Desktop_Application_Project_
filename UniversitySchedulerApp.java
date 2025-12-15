@@ -117,6 +117,19 @@ public class UniversitySchedulerApp {
                     System.out.println("    No fixed exam file found. Skipping.");
                 }
 
+                // [6a.5] Impossible Situation Analysis
+                System.out.println("\n[6a.5] Checking impossible situations...");
+
+                ImpossibleSituationChecker checker = new ImpossibleSituationChecker();
+                checker.check(
+                        examPeriod,
+                        enrolledCourses,
+                        classrooms,
+                        fixedExamService.getFixedExams().size()
+                );
+
+                System.out.println("    Impossible situation check passed.");
+
                 // [6b] Assigning Regular Exams using improved scheduling algorithm
                 System.out.println("\n[6b] Assigning Regular Exams (Improved Algorithm)...");
 
