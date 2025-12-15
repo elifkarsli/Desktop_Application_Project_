@@ -19,7 +19,8 @@ public class ImpossibleSituationChecker {
         checkClassroomCapacity(enrolledCourses, classrooms);
     }
 
-    // 1️⃣ Slot sayısı yeterli mi?
+    // Checks whether the total number of available slots is sufficient
+    // for all fixed and regular exams (impossible otherwise)
     private void checkSlotCount(
             ExamPeriod examPeriod,
             int regularExamCount,
@@ -37,8 +38,8 @@ public class ImpossibleSituationChecker {
             );
         }
     }
-
-    // 2️⃣ Classroom kapasitesi yeterli mi?
+    // Checks whether at least one classroom can accommodate
+    // the student count of every course (impossible otherwise)
     private void checkClassroomCapacity(
             List<Course> courses,
             List<Classroom> classrooms
