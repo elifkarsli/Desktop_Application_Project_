@@ -728,52 +728,114 @@ public class SchedulerGUI extends JFrame {
         JPanel toolbar = new JPanel(new BorderLayout());
         toolbar.setBackground(BG_CANVAS);
         toolbar.setBorder(new EmptyBorder(0, 0, 20, 0));
-        
+
         JLabel title = new JLabel("Final Schedule");
         title.setFont(FONT_HEADER);
         title.setForeground(TEXT_PRIMARY);
-        
+
+        // ---------- ACTIONS ----------
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         actions.setBackground(BG_CANVAS);
-        JButton btnFilter = new JButton("Filter");
-        btnFilter.setBackground(BG_CARD);
-        btnFilter.setBorder(new LineBorder(BORDER_COLOR));
-        
+
+        // VIEW SELECTOR (FR-6)
+        JComboBox<String> viewSelector = new JComboBox<>();
+        viewSelector.addItem("View by Day");
+        viewSelector.addItem("View by Course");
+        viewSelector.addItem("View by Student");
+        viewSelector.addItem("View by Classroom");
+
+        // COURSE SELECTOR
+        JComboBox<String> courseSelector = new JComboBox<>();
+        courseSelector.addItem("Select Course");
+        for (Course c : masterCourses) {
+            courseSelector.addItem(c.getCourseCode());
+        }
+
+        // DEFAULT STATES
+        courseSelector.setEnabled(false);
+
+        // VIEW CHANGE LOGIC
+        viewSelector.addActionListener(e -> {
+            String view = (String) viewSelector.getSelectedItem();
+
+            switch (view) {
+                case "View by Day":
+                    courseSelector.setEnabled(false);
+                    updateResultsTable();
+                    break;
+
+                case "View by Course":
+                    courseSelector.setEnabled(true);
+                    break;
+
+                case "View by Student":
+                    courseSelector.setEnabled(false);
+                    updateResultsTableByStudent(); // IMPLEMENT NEXT
+                    break;
+
+                case "View by Classroom":
+                    courseSelector.setEnabled(false);
+                    updateResultsTableByClassroom(); // IMPLEMENT NEXT
+                    break;
+            }
+        });
+
+        // COURSE FILTER LOGIC
+        courseSelector.addActionListener(e -> {
+            if (!courseSelector.isEnabled()) return;
+
+            String selected = (String) courseSelector.getSelectedItem();
+            if (selected == null || selected.equals("Select Course")) {
+                updateResultsTable();
+            } else {
+                updateResultsTableByCourse(selected);
+            }
+        });
+
+        // BUTTONS
         JButton btnExport = new JButton("Export CSV");
         stylePrimaryButton(btnExport);
-        
-        actions.add(btnFilter);
+
+        // ADD ORDER
+        actions.add(viewSelector);
+        actions.add(courseSelector);
         actions.add(btnExport);
-        
+
         toolbar.add(title, BorderLayout.WEST);
         toolbar.add(actions, BorderLayout.EAST);
         panel.add(toolbar, BorderLayout.NORTH);
 
+        // ---------- TABLE ----------
         String[] columnNames = {"Day", "Slot", "Course Code", "Students Enrolled"};
         DefaultTableModel model = new DefaultTableModel(columnNames, 0);
         resultsTable = new JTable(model);
+
         resultsTable.setRowHeight(40);
         resultsTable.setShowVerticalLines(false);
         resultsTable.setGridColor(BORDER_COLOR);
         resultsTable.setFont(FONT_BODY);
-        
+
         JTableHeader header = resultsTable.getTableHeader();
-        header.setBackground(new Color(241, 245, 249)); // Light Gray
+        header.setBackground(new Color(241, 245, 249));
         header.setForeground(TEXT_PRIMARY);
         header.setFont(FONT_SUBHEADER);
         header.setPreferredSize(new Dimension(0, 40));
-        
+
         resultsTable.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
             @Override
-            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
-                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            public Component getTableCellRendererComponent(
+                    JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+
+                Component c = super.getTableCellRendererComponent(
+                        table, value, isSelected, hasFocus, row, column);
+
                 if (!isSelected) {
                     c.setBackground(row % 2 == 0 ? Color.WHITE : new Color(248, 250, 252));
                 }
                 return c;
             }
         });
-        
+
         JScrollPane scrollPane = new JScrollPane(resultsTable);
         scrollPane.setBorder(new LineBorder(BORDER_COLOR));
         scrollPane.getViewport().setBackground(Color.WHITE);
@@ -782,7 +844,12 @@ public class SchedulerGUI extends JFrame {
         return panel;
     }
 
+
     private void updateResultsTable() {
+        setTableColumns(new String[]{
+                "Day", "Slot", "Course Code", "Students Enrolled"
+        });
+
         DefaultTableModel model = (DefaultTableModel) resultsTable.getModel();
         model.setRowCount(0);
 
@@ -808,7 +875,7 @@ public class SchedulerGUI extends JFrame {
                 model.addRow(new Object[]{
                         "Day " + (day + 1),
                         "Slot " + (slot + 1),
-                        courseCode,
+                        finalCode,
                         studentCount
                 });
             }
@@ -824,4 +891,153 @@ public class SchedulerGUI extends JFrame {
         btn.setBorder(new EmptyBorder(10, 20, 10, 20));
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
     }
+    private void updateResultsTableByCourse(String courseCode) {
+        
+        setTableColumns(new String[]{
+                "Student ID", "Course", "Day", "Slot"
+        });
+
+        DefaultTableModel model = (DefaultTableModel) resultsTable.getModel();
+
+        String[][] matrix = examPeriod.getExamMatrix();
+        if (matrix == null) return;
+
+        Course course = masterCourses.stream()
+                .filter(c -> c.getCourseCode().equals(courseCode))
+                .findFirst()
+                .orElse(null);
+
+        if (course == null) return;
+
+        int examDay = -1;
+        int examSlot = -1;
+
+        outer:
+        for (int day = 0; day < matrix.length; day++) {
+            for (int slot = 0; slot < matrix[day].length; slot++) {
+                String code = matrix[day][slot];
+                if (code == null) continue;
+
+                String clean = code.replace("[FIXED] ", "").trim();
+                if (clean.equals(courseCode)) {
+                    examDay = day + 1;
+                    examSlot = slot + 1;
+                    break outer;
+                }
+            }
+        }
+
+        if (examDay == -1) return;
+
+        for (Student student : course.getEnrolledStudents()) {
+            model.addRow(new Object[]{
+                    student.getId(),
+                    courseCode,
+                    "Day " + examDay,
+                    "Slot " + examSlot
+            });
+        }
+    }
+
+    private int getStudentCount(String courseCode) {
+        return masterCourses.stream()
+                .filter(c -> c.getCourseCode().equals(courseCode))
+                .map(c -> c.getEnrolledStudents().size())
+                .findFirst()
+                .orElse(0);
+    }
+    private void refreshCourseSelector(JComboBox<String> courseSelector) {
+        courseSelector.removeAllItems();
+        courseSelector.addItem("Select Course");
+
+        if (masterCourses != null) {
+            for (Course c : masterCourses) {
+                courseSelector.addItem(c.getCourseCode());
+            }
+        }
+    }
+    private void updateResultsTableByStudent() {
+
+        setTableColumns(new String[]{
+                "Student ID", "Course", "Day", "Slot"
+        });
+
+        DefaultTableModel model = (DefaultTableModel) resultsTable.getModel();
+
+        String[][] matrix = examPeriod.getExamMatrix();
+        if (matrix == null) return;
+
+        for (Student student : students) {
+            for (Course course : masterCourses) {
+
+                if (!course.getEnrolledStudents().contains(student)) continue;
+
+                for (int day = 0; day < matrix.length; day++) {
+                    for (int slot = 0; slot < matrix[day].length; slot++) {
+
+                        String code = matrix[day][slot];
+                        if (code == null) continue;
+
+                        String clean = code.replace("[FIXED] ", "").trim();
+
+                        if (clean.equals(course.getCourseCode())) {
+                            model.addRow(new Object[]{
+                                    student.getId(),
+                                    course.getCourseCode(),
+                                    "Day " + (day + 1),
+                                    "Slot " + (slot + 1)
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private void updateResultsTableByClassroom() {
+
+        setTableColumns(new String[]{
+                "Classroom", "Day", "Slot", "Course", "Utilization"
+        });
+
+        DefaultTableModel model = (DefaultTableModel) resultsTable.getModel();
+
+        String[][] matrix = examPeriod.getExamMatrix();
+        if (matrix == null) return;
+
+        for (Classroom room : classrooms) {
+            for (int day = 0; day < matrix.length; day++) {
+                for (int slot = 0; slot < matrix[day].length; slot++) {
+
+                    String courseCode = matrix[day][slot];
+                    if (courseCode == null) continue;
+
+                    String clean = courseCode.replace("[FIXED] ", "").trim();
+
+                    Optional<Course> courseOpt = masterCourses.stream()
+                            .filter(c -> c.getCourseCode().equals(clean))
+                            .findFirst();
+
+                    int studentCount = courseOpt
+                            .map(c -> c.getEnrolledStudents().size())
+                            .orElse(0);
+
+                    if (studentCount <= room.getCapacity()) {
+                        model.addRow(new Object[]{
+                                room.getName(),
+                                "Day " + (day + 1),
+                                "Slot " + (slot + 1),
+                                clean,
+                                studentCount + "/" + room.getCapacity()
+                        });
+                    }
+                }
+            }
+        }
+    }
+    private void setTableColumns(String[] columns) {
+        DefaultTableModel model = new DefaultTableModel(columns, 0);
+        resultsTable.setModel(model);
+    }
+
 }
