@@ -1,6 +1,6 @@
 package Desktop_Application_Project_.gui;
 
-import Desktop_Application_Project_.ExamPeriod;
+import Desktop_Application_Project_.model.DomainModels.ExamPeriod;
 import Desktop_Application_Project_.exception.DataImportException;
 import Desktop_Application_Project_.model.DomainModels.Classroom;
 import Desktop_Application_Project_.model.DomainModels.Course;

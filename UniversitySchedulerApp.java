@@ -6,10 +6,13 @@ import Desktop_Application_Project_.model.DomainModels.Student;
 import Desktop_Application_Project_.model.DomainModels.Course;
 import Desktop_Application_Project_.model.DomainModels.Classroom;
 import Desktop_Application_Project_.model.DomainModels.FixedExam; // Added explicit import
+import Desktop_Application_Project_.model.DomainModels.ExamPeriod;
 import Desktop_Application_Project_.parser.Parser;
 import Desktop_Application_Project_.parser.impl.CoreParsers;
 import Desktop_Application_Project_.service.*;
 import Desktop_Application_Project_.service.DatabaseManager;
+import Desktop_Application_Project_.model.DomainModels.ExamPeriod;
+
 
 
 import javax.swing.*;

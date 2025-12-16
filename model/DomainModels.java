@@ -95,10 +95,34 @@ public class DomainModels {
             public String[][] getExamMatrix() {
                 return examMatrix;
             }
-        
-            
+
+            public void assignExam(int day, int slot, String courseCode) {
+                examMatrix[day][slot] = courseCode;
+            }
+
+            public boolean assignFixedExam(int day, int slot, String courseCode) {
+                if (examMatrix[day][slot] != null) {
+                    return false;
+                }
+                examMatrix[day][slot] = "[FIXED] " + courseCode;
+                return true;
+            }
+
+            public void printExamSchedule() {
+                System.out.println("Exam Schedule:");
+                for (int d = 0; d < totalDays; d++) {
+                    System.out.print("Day " + (d + 1) + ": ");
+                    for (int s = 0; s < slotsPerDay; s++) {
+                        System.out.print(
+                                (examMatrix[d][s] != null ? examMatrix[d][s] : "empty") + " | "
+                        );
+                    }
+                    System.out.println();
+                }
+            }
         }
-        // Fixed Exam entity
+
+    // Fixed Exam entity
         public static class FixedExam {
             private final String courseCode;
             private final int day;
