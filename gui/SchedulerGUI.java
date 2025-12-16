@@ -781,36 +781,41 @@ public class SchedulerGUI extends JFrame {
 
         return panel;
     }
-    
+
     private void updateResultsTable() {
         DefaultTableModel model = (DefaultTableModel) resultsTable.getModel();
-        model.setRowCount(0); // Clear existing
-        
+        model.setRowCount(0);
+
         String[][] matrix = examPeriod.getExamMatrix();
         if (matrix == null) return;
-        
+
         for (int day = 0; day < matrix.length; day++) {
             for (int slot = 0; slot < matrix[day].length; slot++) {
+
                 String courseCode = matrix[day][slot];
-                if (courseCode != null) {
-                    String finalCode = courseCode.replace("[FIXED] ", "").trim();
-                    Optional<Course> c = enrolledCourses.stream()
-                            .filter(co -> co.getCourseCode().equals(finalCode))
-                            .findFirst();
-                    
-                    int count = c.map(course -> course.getEnrolledStudents().size()).orElse(0);
-                    
-                    model.addRow(new Object[]{
+                if (courseCode == null) continue;
+
+                String finalCode = courseCode.replace("[FIXED] ", "").trim();
+
+                Optional<Course> courseOpt = masterCourses.stream()
+                        .filter(c -> c.getCourseCode().equals(finalCode))
+                        .findFirst();
+
+                int studentCount = courseOpt
+                        .map(c -> c.getEnrolledStudents().size())
+                        .orElse(0);
+
+                model.addRow(new Object[]{
                         "Day " + (day + 1),
                         "Slot " + (slot + 1),
                         courseCode,
-                        count
-                    });
-                }
+                        studentCount
+                });
             }
         }
     }
-    
+
+
     private void stylePrimaryButton(JButton btn) {
         btn.setBackground(ACCENT_BLUE);
         btn.setForeground(Color.WHITE);
