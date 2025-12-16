@@ -1,5 +1,6 @@
 package Desktop_Application_Project_.gui;
 
+import Desktop_Application_Project_.service.ScheduleCSVExporter;
 import Desktop_Application_Project_.model.DomainModels.ExamPeriod;
 import Desktop_Application_Project_.exception.DataImportException;
 import Desktop_Application_Project_.model.DomainModels.Classroom;
@@ -795,6 +796,56 @@ public class SchedulerGUI extends JFrame {
         // BUTTONS
         JButton btnExport = new JButton("Export CSV");
         stylePrimaryButton(btnExport);
+
+        btnExport.addActionListener(e -> {
+
+            if (examPeriod == null || examPeriod.getExamMatrix() == null) {
+                JOptionPane.showMessageDialog(
+                        this,
+                        "No schedule available to export.",
+                        "Export Error",
+                        JOptionPane.ERROR_MESSAGE
+                );
+                return;
+            }
+
+            JFileChooser chooser = new JFileChooser();
+            chooser.setDialogTitle("Save Schedule as CSV");
+
+            int result = chooser.showSaveDialog(this);
+
+            if (result == JFileChooser.APPROVE_OPTION) {
+                try {
+                    String path = chooser.getSelectedFile().getAbsolutePath();
+
+                    if (!path.endsWith(".csv")) {
+                        path += ".csv";
+                    }
+
+                    ScheduleCSVExporter.export(
+                            examPeriod,
+                            masterCourses,
+                            path
+                    );
+
+                    JOptionPane.showMessageDialog(
+                            this,
+                            "Schedule exported successfully!",
+                            "Export Complete",
+                            JOptionPane.INFORMATION_MESSAGE
+                    );
+
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(
+                            this,
+                            "Export failed: " + ex.getMessage(),
+                            "Error",
+                            JOptionPane.ERROR_MESSAGE
+                    );
+                }
+            }
+        });
+
 
         // ADD ORDER
         actions.add(viewSelector);

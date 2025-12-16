@@ -146,8 +146,8 @@ public class UniversitySchedulerApp {
 
                 // [6a] Fixed Exams logic
                 FixedExamService fixedExamService = new FixedExamService();
-                
-                List<FixedExam> fixedExams = Collections.emptyList(); 
+
+                List<FixedExam> fixedExams = Collections.emptyList();
 
                 if (fixedExamFile.exists()) {
                     System.out.println("    Processing Fixed Exams...");
@@ -157,7 +157,7 @@ public class UniversitySchedulerApp {
                     for (FixedExam fx : fixedExams) {
                         try {
                             fixedExamService.addFixedExam(fx); // conflict check
-                            
+
                             // Assign to matrix (Day - 1 because CSV is usually 1-based)
                             boolean assigned = examPeriod.assignFixedExam(fx.getDay() - 1, fx.getSlot() - 1, fx.getCourseCode());
                             if (!assigned) {
@@ -205,7 +205,7 @@ public class UniversitySchedulerApp {
                     suggestionEngine.analyzeAndSuggest(
                             masterCourses,
                             classrooms,
-                            fixedExams, 
+                            fixedExams,
                             totalDays,
                             slotsPerDay
                     );
@@ -218,7 +218,7 @@ public class UniversitySchedulerApp {
                 System.out.println("\n[7] Writing Final Output...");
                 FinalWriter writer = new FinalWriter();
                 writer.writeOutput(classrooms, students, masterCourses, masterCourses, outputPath);
-                
+
                 System.out.println("--- Execution Finished Successfully ---");
 
                 // [8] Launch GUI
