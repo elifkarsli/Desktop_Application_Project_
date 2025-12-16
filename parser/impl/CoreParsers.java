@@ -92,48 +92,49 @@ public class CoreParsers {
         }
     }
 
-    public static class AttendanceParser implements Parser<Course> {
+    public static class AttendanceParser implements Parser<String[]> {
+
         @Override
-        public List<Course> parse(File file) throws DataImportException {
-            Map<String, Course> courseMap = new HashMap<>();
+        public List<String[]> parse(File file) throws DataImportException {
+            List<String[]> rows = new ArrayList<>();
+
             try (BufferedReader br = new BufferedReader(new FileReader(file))) {
                 String line;
-                String currentCourseCode = null;
+                String currentCourse = null;
 
                 while ((line = br.readLine()) != null) {
                     line = line.trim();
                     if (line.isEmpty()) continue;
 
-                    if (line.startsWith("['") || line.startsWith("[")) {
-                        if (currentCourseCode != null) {
-                            List<String> studentIds = parsePythonListString(line);
-                            Course course = courseMap.computeIfAbsent(currentCourseCode, Course::new);
-                            for (String stdId : studentIds) {
-                                course.enrollStudent(new Student(stdId));
-                            }
-                            currentCourseCode = null;
+                    // CourseCode satırı
+                    if (!line.startsWith("[")) {
+                        currentCourse = line;
+                    }
+                    // Öğrenci listesi satırı
+                    else if (currentCourse != null) {
+                        String clean = line.replace("[", "").replace("]", "");
+                        String[] tokens = clean.split(",");
+
+                        for (String token : tokens) {
+                            String studentId =
+                                    token.trim().replaceAll("^['\"]|['\"]$", "");
+
+                            rows.add(new String[]{studentId, currentCourse});
                         }
-                    } else {
-                        currentCourseCode = line;
+
+                        currentCourse = null;
                     }
                 }
-            } catch (IOException e) {
-                throw new DataImportException("Failed to read Attendance file.", e);
-            }
-            return new ArrayList<>(courseMap.values());
-        }
 
-        private List<String> parsePythonListString(String raw) {
-            List<String> ids = new ArrayList<>();
-            String clean = raw.replace("[", "").replace("]", "");
-            String[] tokens = clean.split(",");
-            for (String token : tokens) {
-                String id = token.trim().replaceAll("^['\"]|['\"]$", "");
-                if (!id.isEmpty()) ids.add(id);
+            } catch (Exception e) {
+                throw new DataImportException("Failed to parse attendance file", e);
             }
-            return ids;
+
+            return rows;
         }
     }
+
+
     // service.FixedExam Parser
     public static class FixedExamParser implements Parser<FixedExam> {
 

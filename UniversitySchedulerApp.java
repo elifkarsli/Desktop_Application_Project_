@@ -9,6 +9,8 @@ import Desktop_Application_Project_.model.DomainModels.FixedExam; // Added expli
 import Desktop_Application_Project_.parser.Parser;
 import Desktop_Application_Project_.parser.impl.CoreParsers;
 import Desktop_Application_Project_.service.*;
+import Desktop_Application_Project_.service.DatabaseManager;
+
 
 import javax.swing.*;
 import java.io.File;
@@ -19,6 +21,8 @@ public class UniversitySchedulerApp {
 
     public static void main(String[] args) {
         System.out.println("--- Starting University Exam Scheduler Import ---");
+
+        DatabaseManager.initializeDatabase();
 
         File studentFile = new File("CSV_Files/students.csv");
         File courseFile  = new File("CSV_Files/courses.csv");
@@ -31,11 +35,21 @@ public class UniversitySchedulerApp {
         try {
             // [1] Parse Students
             System.out.println("\n[1] Parsing Students...");
+
+            Parser<Student> studentParser = new CoreParsers.StudentParser();
+            StudentDAO studentDAO = new StudentDAO();
             List<Student> students = Collections.emptyList();
+
             if (studentFile.exists()) {
-                Parser<Student> studentParser = new CoreParsers.StudentParser();
-                students = studentParser.parse(studentFile);
-                System.out.println("    Successfully loaded " + students.size() + " students.");
+                if (studentDAO.isEmpty()) {
+                    System.out.println("    Students table empty. Importing from CSV...");
+                    students = studentParser.parse(studentFile);
+                    studentDAO.insertStudents(students);
+                } else {
+                    System.out.println("    Loading students from database...");
+                    students = studentDAO.getAllStudents();
+                }
+
             } else {
                 System.out.println("    Student file not found at: " + studentFile.getPath());
             }
@@ -43,9 +57,20 @@ public class UniversitySchedulerApp {
             // [2] Parse Classrooms
             System.out.println("\n[2] Parsing Classrooms...");
             List<Classroom> classrooms = Collections.emptyList();
+
             if (classroomFile.exists()) {
                 Parser<Classroom> roomParser = new CoreParsers.ClassroomParser();
-                classrooms = roomParser.parse(classroomFile);
+                ClassroomDAO classroomDAO = new ClassroomDAO();
+
+                if (classroomDAO.isEmpty()) {
+                    System.out.println("    Classrooms table empty. Importing from CSV...");
+                    classrooms = roomParser.parse(classroomFile);
+                    classroomDAO.insertClassrooms(classrooms);
+                } else {
+                    System.out.println("    Loading classrooms from database...");
+                    classrooms = classroomDAO.getAllClassrooms();
+                }
+
                 System.out.println("    Successfully loaded " + classrooms.size() + " classrooms.");
             } else {
                 System.out.println("    Classroom file not found.");
@@ -54,21 +79,49 @@ public class UniversitySchedulerApp {
             // [3] Parse Course List
             System.out.println("\n[3] Parsing Master Course List...");
             List<Course> masterCourses = Collections.emptyList();
+
             if (courseFile.exists()) {
                 Parser<Course> courseParser = new CoreParsers.CourseParser();
-                masterCourses = courseParser.parse(courseFile);
+                CourseDAO courseDAO = new CourseDAO();
+
+                if (courseDAO.isEmpty()) {
+                    System.out.println("    Courses table empty. Importing from CSV...");
+                    masterCourses = courseParser.parse(courseFile);
+                    courseDAO.insertCourses(masterCourses);
+                } else {
+                    System.out.println("    Loading courses from database...");
+                    masterCourses = courseDAO.getAllCourses();
+                }
+
                 System.out.println("    Successfully loaded " + masterCourses.size() + " master courses.");
             } else {
                 System.out.println("    Master Course file not found.");
             }
 
-            // [4] Parse Attendance
-            System.out.println("\n[4] Parsing Attendances...");
-            List<Course> enrolledCourses = Collections.emptyList();
+
+            // [4] Process Attendance (Student–Course relations)
+            System.out.println("\n[4] Processing Attendances...");
+
+            AttendanceDAO attendanceDAO = new AttendanceDAO();
+            CourseEnrollmentService enrollmentService = new CourseEnrollmentService();
+
             if (attendanceFile.exists()) {
-                Parser<Course> attendanceParser = new CoreParsers.AttendanceParser();
-                enrolledCourses = attendanceParser.parse(attendanceFile);
-                System.out.println("    Successfully loaded attendance for " + enrolledCourses.size() + " courses.");
+
+                if (attendanceDAO.isEmpty()) {
+                    System.out.println("    Attendance table empty. Importing from CSV...");
+
+                    Parser<String[]> attendanceParser = new CoreParsers.AttendanceParser();
+                    List<String[]> attendanceRows = attendanceParser.parse(attendanceFile);
+
+                    attendanceDAO.insertAttendance(attendanceRows);
+                } else {
+                    System.out.println("    Loading attendance from database...");
+                }
+
+                enrollmentService.loadEnrollments(masterCourses, students);
+
+                System.out.println("    Attendance relations loaded successfully.");
+
             } else {
                 System.out.println("    Attendance file not found.");
             }
@@ -76,7 +129,7 @@ public class UniversitySchedulerApp {
             // [5] Data Validation
             System.out.println("\n[5] Validating Referential Integrity...");
             DataValidator validator = new DataValidator();
-            List<String> errors = validator.validate(students, classrooms, masterCourses, enrolledCourses);
+            List<String> errors = validator.validate(students, classrooms, masterCourses, masterCourses);
 
             if (errors.isEmpty()) {
                 System.out.println("    SUCCESS: All data is valid.");
@@ -121,7 +174,7 @@ public class UniversitySchedulerApp {
                 ImpossibleSituationChecker checker = new ImpossibleSituationChecker();
                 checker.check(
                         examPeriod,
-                        enrolledCourses,
+                        masterCourses,
                         classrooms,
                         fixedExamService.getFixedExams().size()
                 );
@@ -133,7 +186,7 @@ public class UniversitySchedulerApp {
                 ExamSchedulerService schedulerService = new ExamSchedulerService();
 
                 List<Course> unplacedCourses = schedulerService.scheduleRegularExams(
-                        enrolledCourses,
+                        masterCourses,
                         classrooms,
                         examPeriod
                 );
@@ -147,7 +200,7 @@ public class UniversitySchedulerApp {
                     System.out.println("\n[!] Triggering Suggestion Engine...");
                     SuggestionEngine suggestionEngine = new SuggestionEngine();
                     suggestionEngine.analyzeAndSuggest(
-                            enrolledCourses,
+                            masterCourses,
                             classrooms,
                             fixedExams, 
                             totalDays,
@@ -161,7 +214,7 @@ public class UniversitySchedulerApp {
                 // [7] Write Output
                 System.out.println("\n[7] Writing Final Output...");
                 FinalWriter writer = new FinalWriter();
-                writer.writeOutput(classrooms, students, masterCourses, enrolledCourses, outputPath);
+                writer.writeOutput(classrooms, students, masterCourses, masterCourses, outputPath);
                 
                 System.out.println("--- Execution Finished Successfully ---");
 
@@ -171,7 +224,7 @@ public class UniversitySchedulerApp {
                 final List<Student> finalStudents = students;
                 final List<Classroom> finalClassrooms = classrooms;
                 final List<Course> finalMasterCourses = masterCourses;
-                final List<Course> finalEnrolledCourses = enrolledCourses;
+                final List<Course> finalEnrolledCourses = masterCourses;
 
                 SwingUtilities.invokeLater(() -> {
                     SchedulerGUI gui = new SchedulerGUI(
