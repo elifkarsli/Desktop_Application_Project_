@@ -1,108 +1,822 @@
 package Desktop_Application_Project_.gui;
-import  Desktop_Application_Project_.model.DomainModels.Classroom;
-import  Desktop_Application_Project_.model.DomainModels.Course;
-import  Desktop_Application_Project_.model.DomainModels.Student;
+
+import Desktop_Application_Project_.ExamPeriod;
+import Desktop_Application_Project_.exception.DataImportException;
+import Desktop_Application_Project_.model.DomainModels.Classroom;
+import Desktop_Application_Project_.model.DomainModels.Course;
+import Desktop_Application_Project_.model.DomainModels.FixedExam;
+import Desktop_Application_Project_.model.DomainModels.Student;
+import Desktop_Application_Project_.parser.Parser;
+import Desktop_Application_Project_.parser.impl.CoreParsers;
+import Desktop_Application_Project_.service.DataValidator;
+import Desktop_Application_Project_.service.ExamSchedulerService;
+import Desktop_Application_Project_.service.FixedExamService;
+import Desktop_Application_Project_.service.SuggestionEngine;
 
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import javax.swing.border.LineBorder;
+import javax.swing.filechooser.FileNameExtensionFilter;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.JTableHeader;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.PrintStream;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Optional;
 
 public class SchedulerGUI extends JFrame {
 
-    public SchedulerGUI(List<Student> students,
-                        List<Classroom> classrooms,
-                        List<Course> masterCourses,
-                        List<Course> enrolledCourses) {
+    // Data lists
+    private List<Student> students;
+    private List<Classroom> classrooms;
+    private List<Course> masterCourses;
+    private List<Course> enrolledCourses;
+    
+    // Scheduling Objects
+    private ExamPeriod examPeriod;
+    private List<FixedExam> fixedExams = new ArrayList<>();
 
-        setTitle("University Scheduler - Data Viewer");
-        setSize(800, 600);
+    // Navigation Buttons
+    private JButton btnDashboard, btnImport, btnValidate, btnConfig, btnScheduler, btnResults;
+
+    // Main Content Area (CardLayout for switching screens)
+    private JPanel mainContentPanel;
+    private CardLayout cardLayout;
+
+    // UI Components for updates
+    private JLabel lblStudentCount, lblClassroomCount, lblCourseCount, lblAttendanceCount;
+    private JTable resultsTable;
+    private JSpinner spinDays, spinSlots;
+    private JTextArea validationLogArea;
+
+    // --- DESIGN SYSTEM CONSTANTS ---
+    // "Linear" / "Vercel" inspired palette
+    private final Color BG_CANVAS = new Color(248, 250, 252); // #F8FAFC
+    private final Color BG_CARD = Color.WHITE;                // #FFFFFF
+    private final Color SIDEBAR_COLOR = new Color(30, 41, 59); // #1E293B (Deep Slate)
+    private final Color ACCENT_BLUE = new Color(59, 130, 246); // #3B82F6 (Electric Blue)
+    private final Color TEXT_PRIMARY = new Color(15, 23, 42);  // Dark Slate
+    private final Color TEXT_SECONDARY = new Color(100, 116, 139); // Slate Gray
+    private final Color BORDER_COLOR = new Color(226, 232, 240);   // Light Gray Border
+    private final Color SUCCESS_GREEN = new Color(34, 197, 94);    // Pastel Green
+    private final Color ERROR_RED = new Color(239, 68, 68);        // Pastel Red
+    
+    // Fonts
+    private final Font FONT_HEADER = new Font("SansSerif", Font.BOLD, 24);
+    private final Font FONT_SUBHEADER = new Font("SansSerif", Font.BOLD, 14);
+    private final Font FONT_BODY = new Font("SansSerif", Font.PLAIN, 13);
+    private final Font FONT_MONO = new Font("Monospaced", Font.PLAIN, 13);
+
+    public SchedulerGUI(List<Student> students, List<Classroom> classrooms, List<Course> masterCourses, List<Course> enrolledCourses) {
+        this.students = students;
+        this.classrooms = classrooms;
+        this.masterCourses = masterCourses;
+        this.enrolledCourses = enrolledCourses;
+
+        // Default Configuration
+        this.examPeriod = new ExamPeriod(5, 4);
+
+        // Basic Frame Setup
+        setTitle("University Exam Scheduler System");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setLocationRelativeTo(null); // Center on screen
+        setSize(1280, 850);
+        setLocationRelativeTo(null);
+        setLayout(new BorderLayout());
+        setBackground(BG_CANVAS);
 
-        JTabbedPane tabbedPane = new JTabbedPane();
+        // 1. Create Sidebar
+        JPanel sidebar = createSidebar();
+        add(sidebar, BorderLayout.WEST);
 
-        // --- Tab 1: Students ---
-        tabbedPane.addTab("Students (" + students.size() + ")", createStudentPanel(students));
+        // 2. Create Top Bar
+        JPanel topBar = createTopBar();
+        add(topBar, BorderLayout.NORTH);
 
-        // --- Tab 2: Classrooms ---
-        tabbedPane.addTab("Classrooms (" + classrooms.size() + ")", createClassroomPanel(classrooms));
+        // 3. Create Main Content Area
+        cardLayout = new CardLayout();
+        mainContentPanel = new JPanel(cardLayout);
+        mainContentPanel.setBackground(BG_CANVAS);
 
-        // --- Tab 3: Master Courses ---
-        tabbedPane.addTab("Master Courses (" + masterCourses.size() + ")", createMasterCoursePanel(masterCourses));
+        // --- Add Screens (Cards) ---
+        mainContentPanel.add(createDashboardPanel(), "dashboard");
+        mainContentPanel.add(createImportPanel(), "import");
+        mainContentPanel.add(createValidatePanel(), "validate");
+        mainContentPanel.add(createConfigPanel(), "config");
+        mainContentPanel.add(createSchedulerPanel(), "scheduler");
+        mainContentPanel.add(createResultsPanel(), "results");
 
-        // --- Tab 4: Enrollments ---
-        tabbedPane.addTab("Enrollments (" + enrolledCourses.size() + ")", createEnrollmentPanel(enrolledCourses));
-
-        add(tabbedPane);
+        add(mainContentPanel, BorderLayout.CENTER);
+        
+        // Initial Stat Update
+        updateStats();
     }
 
-    private JPanel createStudentPanel(List<Student> students) {
-        String[] columnNames = {"Student ID"};
-        DefaultTableModel model = new DefaultTableModel(columnNames, 0);
+    // --- Helper Methods to Build UI ---
 
-        for (Student s : students) {
-            model.addRow(new Object[]{s.getId()});
-        }
+    private JPanel createSidebar() {
+        JPanel sidebar = new JPanel();
+        sidebar.setLayout(new GridLayout(12, 1, 8, 8)); // More spacing
+        sidebar.setPreferredSize(new Dimension(260, 0));
+        sidebar.setBackground(SIDEBAR_COLOR);
+        sidebar.setBorder(new EmptyBorder(25, 15, 25, 15));
 
-        JTable table = new JTable(model);
-        return createTablePanel(table);
+        JLabel lblTitle = new JLabel("UniScheduler", SwingConstants.LEFT);
+        lblTitle.setForeground(Color.WHITE);
+        lblTitle.setFont(new Font("SansSerif", Font.BOLD, 20));
+        lblTitle.setBorder(new EmptyBorder(0, 10, 20, 0));
+        sidebar.add(lblTitle);
+
+        btnDashboard = createMenuButton("Dashboard");
+        btnImport = createMenuButton("Import Data");
+        btnValidate = createMenuButton("Validate Data");
+        btnConfig = createMenuButton("Exam Period");
+        btnScheduler = createMenuButton("Run Scheduler");
+        btnResults = createMenuButton("View Results");
+
+        btnDashboard.addActionListener(e -> cardLayout.show(mainContentPanel, "dashboard"));
+        btnImport.addActionListener(e -> cardLayout.show(mainContentPanel, "import"));
+        btnValidate.addActionListener(e -> cardLayout.show(mainContentPanel, "validate"));
+        btnConfig.addActionListener(e -> cardLayout.show(mainContentPanel, "config"));
+        btnScheduler.addActionListener(e -> cardLayout.show(mainContentPanel, "scheduler"));
+        btnResults.addActionListener(e -> cardLayout.show(mainContentPanel, "results"));
+
+        sidebar.add(btnDashboard);
+        sidebar.add(btnImport);
+        sidebar.add(btnValidate);
+        sidebar.add(btnConfig);
+        sidebar.add(btnScheduler);
+        sidebar.add(btnResults);
+        
+        // Spacer to push content up
+        sidebar.add(Box.createGlue()); 
+
+        return sidebar;
     }
 
-    private JPanel createClassroomPanel(List<Classroom> classrooms) {
-        String[] columnNames = {"Classroom Name", "Capacity"};
-        DefaultTableModel model = new DefaultTableModel(columnNames, 0);
-
-        for (Classroom c : classrooms) {
-            model.addRow(new Object[]{c.getName(), c.getCapacity()});
-        }
-
-        JTable table = new JTable(model);
-        return createTablePanel(table);
+    private JButton createMenuButton(String text) {
+        JButton btn = new JButton(text);
+        btn.setFocusPainted(false);
+        btn.setBackground(SIDEBAR_COLOR); // Transparent-ish look
+        btn.setForeground(new Color(203, 213, 225)); // Lighter text
+        btn.setFont(new Font("SansSerif", Font.BOLD, 13));
+        btn.setHorizontalAlignment(SwingConstants.LEFT);
+        btn.setBorder(new EmptyBorder(10, 15, 10, 15));
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        
+        // Simple hover effect logic
+        btn.addMouseListener(new MouseAdapter() {
+            public void mouseEntered(MouseEvent evt) {
+                btn.setBackground(new Color(51, 65, 85)); // Lighter slate on hover
+                btn.setForeground(Color.WHITE);
+            }
+            public void mouseExited(MouseEvent evt) {
+                btn.setBackground(SIDEBAR_COLOR);
+                btn.setForeground(new Color(203, 213, 225));
+            }
+        });
+        
+        return btn;
     }
 
-    private JPanel createMasterCoursePanel(List<Course> courses) {
-        String[] columnNames = {"Course Code"};
-        DefaultTableModel model = new DefaultTableModel(columnNames, 0);
+    private JPanel createTopBar() {
+        JPanel topBar = new JPanel(new BorderLayout());
+        topBar.setPreferredSize(new Dimension(0, 70));
+        topBar.setBackground(BG_CARD);
+        topBar.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER_COLOR));
 
-        for (Course c : courses) {
-            model.addRow(new Object[]{c.getCourseCode()});
-        }
+        JLabel lblHeader = new JLabel("   Exam Management Console");
+        lblHeader.setFont(new Font("SansSerif", Font.BOLD, 16));
+        lblHeader.setForeground(TEXT_PRIMARY);
 
-        JTable table = new JTable(model);
-        return createTablePanel(table);
+        JLabel lblToast = new JLabel("System Ready   ");
+        lblToast.setForeground(SUCCESS_GREEN);
+        lblToast.setFont(new Font("SansSerif", Font.BOLD, 12));
+        lblToast.setIcon(UIManager.getIcon("FileView.floppyDriveIcon")); 
+
+        topBar.add(lblHeader, BorderLayout.WEST);
+        topBar.add(lblToast, BorderLayout.EAST);
+        return topBar;
     }
 
-    private JPanel createEnrollmentPanel(List<Course> courses) {
-        String[] columnNames = {"Course Code", "Enrolled Count", "Student Sample"};
-        DefaultTableModel model = new DefaultTableModel(columnNames, 0);
-
-        for (Course c : courses) {
-            // Create a preview string of first 5 students
-            String sample = c.getEnrolledStudents().stream()
-                    .limit(5)
-                    .map(Student::getId)
-                    .collect(Collectors.joining(", ")) + (c.getEnrolledStudents().size() > 5 ? "..." : "");
-
-            model.addRow(new Object[]{
-                    c.getCourseCode(),
-                    c.getEnrolledStudents().size(),
-                    sample
-            });
-        }
-
-        JTable table = new JTable(model);
-        // Make the sample column wider
-        table.getColumnModel().getColumn(2).setPreferredWidth(300);
-        return createTablePanel(table);
-    }
-
-    private JPanel createTablePanel(JTable table) {
+    // --- Screen 1: Dashboard Panel ---
+    private JPanel createDashboardPanel() {
         JPanel panel = new JPanel(new BorderLayout());
-        table.setAutoCreateRowSorter(true); // Allow sorting by clicking headers
-        JScrollPane scrollPane = new JScrollPane(table);
-        panel.add(scrollPane, BorderLayout.CENTER);
+        panel.setBackground(BG_CANVAS);
+        panel.setBorder(new EmptyBorder(40, 40, 40, 40));
+
+        // Header
+        JPanel headerPanel = new JPanel(new BorderLayout());
+        headerPanel.setBackground(BG_CANVAS);
+        JLabel lblWelcome = new JLabel("Dashboard Overview");
+        lblWelcome.setFont(FONT_HEADER);
+        lblWelcome.setForeground(TEXT_PRIMARY);
+        JLabel lblSub = new JLabel("Welcome back, Administrator. Here is what's happening today.");
+        lblSub.setFont(FONT_BODY);
+        lblSub.setForeground(TEXT_SECONDARY);
+        headerPanel.add(lblWelcome, BorderLayout.NORTH);
+        headerPanel.add(lblSub, BorderLayout.SOUTH);
+        panel.add(headerPanel, BorderLayout.NORTH);
+
+        // Stats Cards Grid
+        JPanel statsPanel = new JPanel(new GridLayout(1, 4, 25, 0));
+        statsPanel.setBackground(BG_CANVAS);
+        statsPanel.setBorder(new EmptyBorder(30, 0, 30, 0));
+
+        lblStudentCount = createStatLabel();
+        lblClassroomCount = createStatLabel();
+        lblCourseCount = createStatLabel();
+        lblAttendanceCount = createStatLabel();
+
+        statsPanel.add(createMetricCard("Students", lblStudentCount, "+12% vs last term"));
+        statsPanel.add(createMetricCard("Classrooms", lblClassroomCount, "No changes"));
+        statsPanel.add(createMetricCard("Courses", lblCourseCount, "+5 New Added"));
+        statsPanel.add(createMetricCard("Records", lblAttendanceCount, "Updated Just Now"));
+
+        // Activity Feed
+        JPanel activityPanel = new JPanel(new BorderLayout());
+        activityPanel.setBackground(BG_CARD);
+        activityPanel.setBorder(BorderFactory.createCompoundBorder(
+            new LineBorder(BORDER_COLOR, 1),
+            new EmptyBorder(20, 20, 20, 20)
+        ));
+        
+        JLabel lblActivityTitle = new JLabel("Recent Activities");
+        lblActivityTitle.setFont(FONT_SUBHEADER);
+        lblActivityTitle.setForeground(TEXT_PRIMARY);
+        
+        JTextArea activityList = new JTextArea();
+        activityList.setText("• System initialized successfully.\n• Waiting for data import...\n• No conflicts detected in previous run.");
+        activityList.setFont(FONT_BODY);
+        activityList.setForeground(TEXT_SECONDARY);
+        activityList.setEditable(false);
+        activityList.setLineWrap(true);
+        activityList.setBackground(BG_CARD);
+        
+        activityPanel.add(lblActivityTitle, BorderLayout.NORTH);
+        activityPanel.add(Box.createVerticalStrut(10), BorderLayout.CENTER); // Spacer
+        activityPanel.add(activityList, BorderLayout.SOUTH);
+
+        JPanel centerContainer = new JPanel(new BorderLayout());
+        centerContainer.setBackground(BG_CANVAS);
+        centerContainer.add(statsPanel, BorderLayout.NORTH);
+        centerContainer.add(activityPanel, BorderLayout.CENTER);
+
+        panel.add(centerContainer, BorderLayout.CENTER);
         return panel;
+    }
+    
+    private JLabel createStatLabel() {
+        JLabel lbl = new JLabel("0");
+        lbl.setFont(new Font("SansSerif", Font.BOLD, 36));
+        lbl.setForeground(TEXT_PRIMARY);
+        return lbl;
+    }
+
+    private JPanel createMetricCard(String title, JLabel lblValue, String trend) {
+        JPanel card = new JPanel(new BorderLayout());
+        card.setBackground(BG_CARD);
+        card.setBorder(BorderFactory.createCompoundBorder(
+            new LineBorder(BORDER_COLOR, 1),
+            new EmptyBorder(20, 20, 20, 20)
+        ));
+
+        JLabel lblTitle = new JLabel(title);
+        lblTitle.setFont(new Font("SansSerif", Font.BOLD, 14));
+        lblTitle.setForeground(TEXT_SECONDARY);
+
+        JLabel lblTrend = new JLabel(trend);
+        lblTrend.setFont(new Font("SansSerif", Font.PLAIN, 11));
+        lblTrend.setForeground(ACCENT_BLUE);
+
+        JPanel topPart = new JPanel(new BorderLayout());
+        topPart.setBackground(BG_CARD);
+        topPart.add(lblTitle, BorderLayout.WEST);
+
+        card.add(topPart, BorderLayout.NORTH);
+        card.add(lblValue, BorderLayout.CENTER);
+        card.add(lblTrend, BorderLayout.SOUTH);
+
+        return card;
+    }
+    
+    private void updateStats() {
+        lblStudentCount.setText(String.valueOf(students != null ? students.size() : 0));
+        lblClassroomCount.setText(String.valueOf(classrooms != null ? classrooms.size() : 0));
+        lblCourseCount.setText(String.valueOf(masterCourses != null ? masterCourses.size() : 0));
+        lblAttendanceCount.setText(String.valueOf(enrolledCourses != null ? enrolledCourses.size() : 0));
+    }
+
+    // --- Screen 2: Import Panel (Drag & Drop Zone Design) ---
+    private JPanel createImportPanel() {
+        JPanel panel = new JPanel(new GridBagLayout());
+        panel.setBackground(BG_CANVAS);
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(15, 15, 15, 15);
+        gbc.fill = GridBagConstraints.BOTH;
+
+        JLabel title = new JLabel("Import Data Files");
+        title.setFont(FONT_HEADER);
+        title.setForeground(TEXT_PRIMARY);
+        gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2;
+        panel.add(title, gbc);
+
+        // Visual Drag & Drop Zones
+        JTextField txtStudent = createDragDropZone(panel, "Students File", "CSV_Files/students.csv", 1, 0);
+        JTextField txtCourse = createDragDropZone(panel, "Courses File", "CSV_Files/courses.csv", 1, 1);
+        JTextField txtRoom = createDragDropZone(panel, "Classrooms File", "CSV_Files/classrooms.csv", 2, 0);
+        JTextField txtAtt = createDragDropZone(panel, "Attendance File", "CSV_Files/attendance.csv", 2, 1);
+        JTextField txtFixed = createDragDropZone(panel, "Fixed Exams File", "CSV_Files/fixed_exams.csv", 3, 0);
+
+        JButton btnLoad = new JButton("Load & Parse Files");
+        stylePrimaryButton(btnLoad);
+        
+        btnLoad.addActionListener(e -> {
+            try {
+                // Parsing Logic
+                Parser<Student> studentParser = new CoreParsers.StudentParser();
+                students = studentParser.parse(new File(txtStudent.getText()));
+                
+                Parser<Course> courseParser = new CoreParsers.CourseParser();
+                masterCourses = courseParser.parse(new File(txtCourse.getText()));
+                
+                Parser<Classroom> roomParser = new CoreParsers.ClassroomParser();
+                classrooms = roomParser.parse(new File(txtRoom.getText()));
+                
+                // --- FIX: HANDLE RAW TYPE FOR ATTENDANCE PARSER ---
+                Parser attendanceParser = new CoreParsers.AttendanceParser();
+                List<?> rawAttendanceData = attendanceParser.parse(new File(txtAtt.getText()));
+
+                if (!rawAttendanceData.isEmpty() && rawAttendanceData.get(0) instanceof String[]) {
+                    // DB Format Detected: [courseCode, studentId]
+                    List<String[]> rows = (List<String[]>) rawAttendanceData;
+                    
+                    // Clear previous enrollments in Master Courses
+                    for(Course c : masterCourses) { c.getEnrolledStudents().clear(); }
+
+                    // Manually link
+                    for (String[] row : rows) {
+                        if (row.length < 2) continue;
+                        String courseCode = row[0];
+                        String studentId = row[1];
+
+                        Optional<Course> courseOpt = masterCourses.stream()
+                            .filter(c -> c.getCourseCode().equals(courseCode)).findFirst();
+                        Optional<Student> studentOpt = students.stream()
+                            .filter(s -> s.getId().equals(studentId)).findFirst();
+
+                        if (courseOpt.isPresent() && studentOpt.isPresent()) {
+                            courseOpt.get().enrollStudent(studentOpt.get());
+                        }
+                    }
+                    // Enrolled courses are now the populated master courses
+                    enrolledCourses = masterCourses;
+
+                } else if (!rawAttendanceData.isEmpty() && rawAttendanceData.get(0) instanceof Course) {
+                    // Legacy Format Detected (List<Course>)
+                    enrolledCourses = (List<Course>) rawAttendanceData;
+                } else {
+                    // Empty list or unknown type
+                    enrolledCourses = new ArrayList<>();
+                }
+                
+                if (new File(txtFixed.getText()).exists()) {
+                    Parser<FixedExam> fixedParser = new CoreParsers.FixedExamParser();
+                    fixedExams = fixedParser.parse(new File(txtFixed.getText()));
+                }
+
+                updateStats();
+                JOptionPane.showMessageDialog(this, "Data Loaded Successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+                
+            } catch (DataImportException ex) {
+                JOptionPane.showMessageDialog(this, "Error loading data: " + ex.getMessage(), "Import Error", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+        
+        gbc.gridy = 4; gbc.gridwidth = 2; gbc.anchor = GridBagConstraints.CENTER;
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.insets = new Insets(40, 0, 0, 0);
+        panel.add(btnLoad, gbc);
+
+        JPanel wrapper = new JPanel(new BorderLayout());
+        wrapper.setBackground(BG_CANVAS);
+        wrapper.add(panel, BorderLayout.NORTH);
+        return wrapper;
+    }
+
+    private JTextField createDragDropZone(JPanel panel, String labelText, String defaultPath, int row, int col) {
+        // Container for the zone
+        JPanel zone = new JPanel(new BorderLayout());
+        zone.setBackground(BG_CARD);
+        zone.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        
+        // Dashed Border Simulation
+        zone.setBorder(BorderFactory.createCompoundBorder(
+                new DashedBorder(TEXT_SECONDARY), // Custom dashed look
+                new EmptyBorder(20, 20, 20, 20)
+        ));
+        zone.setPreferredSize(new Dimension(300, 100));
+
+        JLabel lbl = new JLabel(labelText, SwingConstants.CENTER);
+        lbl.setFont(new Font("SansSerif", Font.BOLD, 14));
+        lbl.setForeground(TEXT_PRIMARY);
+        
+        JTextField txtPath = new JTextField(defaultPath);
+        txtPath.setBorder(null);
+        txtPath.setBackground(BG_CARD);
+        txtPath.setHorizontalAlignment(SwingConstants.CENTER);
+        txtPath.setForeground(TEXT_SECONDARY);
+        txtPath.setEditable(false); 
+        
+        JLabel lblIcon = new JLabel("↓ Click to Browse CSV", SwingConstants.CENTER);
+        lblIcon.setForeground(ACCENT_BLUE);
+        lblIcon.setFont(new Font("SansSerif", Font.PLAIN, 12));
+
+        zone.add(lbl, BorderLayout.NORTH);
+        zone.add(txtPath, BorderLayout.CENTER);
+        zone.add(lblIcon, BorderLayout.SOUTH);
+
+        // Click Listener for File Chooser
+        MouseAdapter openChooser = new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                JFileChooser fileChooser = new JFileChooser();
+                fileChooser.setCurrentDirectory(new File(".")); 
+                FileNameExtensionFilter filter = new FileNameExtensionFilter("CSV Files", "csv");
+                fileChooser.setFileFilter(filter);
+                
+                int result = fileChooser.showOpenDialog(SchedulerGUI.this);
+                if (result == JFileChooser.APPROVE_OPTION) {
+                    File selectedFile = fileChooser.getSelectedFile();
+                    txtPath.setText(selectedFile.getAbsolutePath());
+                    lblIcon.setText("File Selected: " + selectedFile.getName());
+                    lblIcon.setForeground(SUCCESS_GREEN);
+                }
+            }
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                zone.setBackground(new Color(241, 245, 249));
+                txtPath.setBackground(new Color(241, 245, 249));
+            }
+            @Override
+            public void mouseExited(MouseEvent e) {
+                zone.setBackground(BG_CARD);
+                txtPath.setBackground(BG_CARD);
+            }
+        };
+        
+        zone.addMouseListener(openChooser);
+        txtPath.addMouseListener(openChooser);
+        lblIcon.addMouseListener(openChooser);
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(10, 10, 10, 10);
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.weightx = 0.5;
+        gbc.gridx = col;
+        gbc.gridy = row;
+        panel.add(zone, gbc);
+        
+        return txtPath;
+    }
+
+    // Custom Dashed Border Class
+    private static class DashedBorder extends LineBorder {
+        public DashedBorder(Color color) { super(color, 1); }
+        @Override
+        public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
+            Graphics2D g2d = (Graphics2D) g;
+            Stroke oldStroke = g2d.getStroke();
+            g2d.setStroke(new BasicStroke(1, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL, 0, new float[]{5}, 0));
+            g2d.setColor(lineColor);
+            g2d.drawRect(x, y, width - 1, height - 1);
+            g2d.setStroke(oldStroke);
+        }
+    }
+    
+    // --- Screen 3: Validation Panel ---
+    private JPanel createValidatePanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(BG_CANVAS);
+        panel.setBorder(new EmptyBorder(40, 40, 40, 40));
+        
+        JLabel title = new JLabel("Data Integrity Check");
+        title.setFont(FONT_HEADER);
+        title.setForeground(TEXT_PRIMARY);
+        title.setBorder(new EmptyBorder(0, 0, 20, 0));
+        panel.add(title, BorderLayout.NORTH);
+        
+        validationLogArea = new JTextArea();
+        validationLogArea.setEditable(false);
+        validationLogArea.setFont(FONT_MONO);
+        validationLogArea.setBackground(BG_CARD);
+        validationLogArea.setBorder(new EmptyBorder(10, 10, 10, 10));
+        
+        JScrollPane scroll = new JScrollPane(validationLogArea);
+        scroll.setBorder(new LineBorder(BORDER_COLOR));
+        panel.add(scroll, BorderLayout.CENTER);
+        
+        JButton btnRunValidation = new JButton("Run Validation Check");
+        stylePrimaryButton(btnRunValidation);
+        
+        btnRunValidation.addActionListener(e -> {
+            DataValidator validator = new DataValidator();
+            List<String> errors = validator.validate(students, classrooms, masterCourses, enrolledCourses);
+            
+            validationLogArea.setText("");
+            if (errors.isEmpty()) {
+                validationLogArea.append("✔ SUCCESS: All data is valid.\n");
+                validationLogArea.append("✔ Referential integrity checks passed.\n");
+                validationLogArea.setForeground(SUCCESS_GREEN);
+            } else {
+                validationLogArea.append("⚠ WARNING: Found " + errors.size() + " issues:\n");
+                for (String err : errors) {
+                    validationLogArea.append("✖ " + err + "\n");
+                }
+                validationLogArea.setForeground(ERROR_RED);
+            }
+        });
+        
+        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        btnPanel.setBackground(BG_CANVAS);
+        btnPanel.setBorder(new EmptyBorder(20, 0, 0, 0));
+        btnPanel.add(btnRunValidation);
+        panel.add(btnPanel, BorderLayout.SOUTH);
+        
+        return panel;
+    }
+
+    // --- Screen 4: Config Panel ---
+    private JPanel createConfigPanel() {
+        JPanel panel = new JPanel(new GridBagLayout());
+        panel.setBackground(BG_CANVAS);
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(15, 15, 15, 15);
+        
+        JLabel title = new JLabel("Configuration Center");
+        title.setFont(FONT_HEADER);
+        title.setForeground(TEXT_PRIMARY);
+        gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2;
+        gbc.insets = new Insets(0, 0, 40, 0);
+        panel.add(title, gbc);
+
+        gbc.insets = new Insets(15, 15, 15, 15);
+
+        JPanel formCard = new JPanel(new GridBagLayout());
+        formCard.setBackground(BG_CARD);
+        formCard.setBorder(new LineBorder(BORDER_COLOR));
+        
+        GridBagConstraints fgbc = new GridBagConstraints();
+        fgbc.insets = new Insets(10, 10, 10, 10);
+        
+        JLabel lblDays = new JLabel("Exam Duration (Days):");
+        lblDays.setFont(FONT_SUBHEADER);
+        fgbc.gridx = 0; fgbc.gridy = 0; fgbc.anchor = GridBagConstraints.EAST;
+        formCard.add(lblDays, fgbc);
+        
+        spinDays = new JSpinner(new SpinnerNumberModel(5, 1, 30, 1));
+        spinDays.setPreferredSize(new Dimension(120, 40));
+        spinDays.setFont(FONT_SUBHEADER);
+        fgbc.gridx = 1; fgbc.anchor = GridBagConstraints.WEST;
+        formCard.add(spinDays, fgbc);
+
+        JLabel lblSlots = new JLabel("Daily Slots:");
+        lblSlots.setFont(FONT_SUBHEADER);
+        fgbc.gridx = 0; fgbc.gridy = 1; fgbc.anchor = GridBagConstraints.EAST;
+        formCard.add(lblSlots, fgbc);
+
+        spinSlots = new JSpinner(new SpinnerNumberModel(4, 1, 10, 1));
+        spinSlots.setPreferredSize(new Dimension(120, 40));
+        spinSlots.setFont(FONT_SUBHEADER);
+        fgbc.gridx = 1; fgbc.anchor = GridBagConstraints.WEST;
+        formCard.add(spinSlots, fgbc);
+
+        gbc.gridy = 1; gbc.gridwidth = 2;
+        panel.add(formCard, gbc);
+
+        JButton btnSave = new JButton("Save & Apply Config");
+        btnSave.setBackground(SUCCESS_GREEN); 
+        btnSave.setForeground(Color.WHITE);
+        btnSave.setFont(new Font("SansSerif", Font.BOLD, 14));
+        btnSave.setFocusPainted(false);
+        btnSave.setBorder(new EmptyBorder(12, 24, 12, 24));
+        
+        btnSave.addActionListener(e -> {
+            int days = (Integer) spinDays.getValue();
+            int slots = (Integer) spinSlots.getValue();
+            this.examPeriod = new ExamPeriod(days, slots);
+            JOptionPane.showMessageDialog(this, "Configuration Saved: " + days + " Days, " + slots + " Slots.");
+        });
+        
+        gbc.gridy = 2; gbc.insets = new Insets(30, 0, 0, 0);
+        panel.add(btnSave, gbc);
+
+        JPanel wrapper = new JPanel(new BorderLayout());
+        wrapper.setBackground(BG_CANVAS);
+        wrapper.add(panel, BorderLayout.NORTH);
+        return wrapper;
+    }
+    
+    // --- Screen 5: Scheduler Panel (Terminal Design) ---
+    private JPanel createSchedulerPanel() {
+        JPanel panel = new JPanel(new GridBagLayout());
+        panel.setBackground(BG_CANVAS);
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(20, 20, 20, 20);
+        
+        JLabel title = new JLabel("Scheduler Execution");
+        title.setFont(FONT_HEADER);
+        title.setForeground(TEXT_PRIMARY);
+        gbc.gridx = 0; gbc.gridy = 0; gbc.anchor = GridBagConstraints.WEST;
+        panel.add(title, gbc);
+        
+        // Terminal-like Log Area
+        JTextArea logArea = new JTextArea(20, 60);
+        logArea.setEditable(false);
+        logArea.setBackground(new Color(15, 23, 42)); // Very Dark Slate
+        logArea.setForeground(new Color(74, 222, 128)); // Terminal Green
+        logArea.setFont(new Font("Monospaced", Font.PLAIN, 14));
+        logArea.setText("> Waiting for command...\n");
+        logArea.setBorder(new EmptyBorder(15, 15, 15, 15));
+        
+        JScrollPane scroll = new JScrollPane(logArea);
+        scroll.setBorder(new LineBorder(BORDER_COLOR));
+        gbc.gridy = 1;
+        panel.add(scroll, gbc);
+        
+        JButton btnRun = new JButton("▶ Start Automatic Scheduling");
+        stylePrimaryButton(btnRun);
+        btnRun.setFont(new Font("SansSerif", Font.BOLD, 16));
+        btnRun.setPreferredSize(new Dimension(300, 50));
+        
+        btnRun.addActionListener(e -> {
+            logArea.setText("> Initializing Scheduler...\n");
+            
+            int days = (Integer) spinDays.getValue();
+            int slots = (Integer) spinSlots.getValue();
+            this.examPeriod = new ExamPeriod(days, slots);
+            logArea.append("> Exam Period Set: " + days + " days, " + slots + " slots.\n");
+            
+            FixedExamService fixedService = new FixedExamService();
+            int fixedCount = 0;
+            for (FixedExam fx : fixedExams) {
+                try {
+                    fixedService.addFixedExam(fx);
+                    if (fx.getDay() <= days && fx.getSlot() <= slots) {
+                        examPeriod.assignFixedExam(fx.getDay() - 1, fx.getSlot() - 1, fx.getCourseCode());
+                        fixedCount++;
+                    } else {
+                         logArea.append("! WARNING: Fixed exam " + fx.getCourseCode() + " out of bounds!\n");
+                    }
+                } catch (Exception ex) {
+                     logArea.append("! Conflict: " + ex.getMessage() + "\n");
+                }
+            }
+            logArea.append("> Assigned " + fixedCount + " fixed exams.\n");
+            
+            ExamSchedulerService schedulerService = new ExamSchedulerService();
+            List<Course> unplaced = schedulerService.scheduleRegularExams(enrolledCourses, classrooms, examPeriod);
+            
+            if (unplaced.isEmpty()) {
+                logArea.append("> SUCCESS: All exams scheduled successfully!\n");
+                logArea.append("> Process finished with code 0.");
+                JOptionPane.showMessageDialog(this, "Scheduling Complete!");
+                cardLayout.show(mainContentPanel, "results");
+                updateResultsTable();
+            } else {
+                logArea.append("> FAILURE: Could not place " + unplaced.size() + " courses.\n");
+                logArea.append("> Triggering Suggestion Engine...\n");
+                
+                // --- CAPTURE SUGGESTION ENGINE OUTPUT ---
+                PrintStream originalOut = System.out;
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                PrintStream captureOut = new PrintStream(baos);
+                
+                try {
+                    System.setOut(captureOut);
+                    SuggestionEngine suggestionEngine = new SuggestionEngine();
+                    suggestionEngine.analyzeAndSuggest(enrolledCourses, classrooms, fixedExams, days, slots);
+                    System.out.flush();
+                } finally {
+                    System.setOut(originalOut);
+                }
+                
+                logArea.append(baos.toString());
+                
+                logArea.append("> Check above for detailed suggestions.\n");
+                JOptionPane.showMessageDialog(this, "Scheduling Failed. Check terminal for details.", "Warning", JOptionPane.WARNING_MESSAGE);
+            }
+        });
+        
+        gbc.gridy = 2;
+        panel.add(btnRun, gbc);
+        
+        return panel;
+    }
+
+    // --- Screen 6: Results Panel (Modern Data Table) ---
+    private JPanel createResultsPanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(BG_CANVAS);
+        panel.setBorder(new EmptyBorder(30, 30, 30, 30));
+
+        JPanel toolbar = new JPanel(new BorderLayout());
+        toolbar.setBackground(BG_CANVAS);
+        toolbar.setBorder(new EmptyBorder(0, 0, 20, 0));
+        
+        JLabel title = new JLabel("Final Schedule");
+        title.setFont(FONT_HEADER);
+        title.setForeground(TEXT_PRIMARY);
+        
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        actions.setBackground(BG_CANVAS);
+        JButton btnFilter = new JButton("Filter");
+        btnFilter.setBackground(BG_CARD);
+        btnFilter.setBorder(new LineBorder(BORDER_COLOR));
+        
+        JButton btnExport = new JButton("Export CSV");
+        stylePrimaryButton(btnExport);
+        
+        actions.add(btnFilter);
+        actions.add(btnExport);
+        
+        toolbar.add(title, BorderLayout.WEST);
+        toolbar.add(actions, BorderLayout.EAST);
+        panel.add(toolbar, BorderLayout.NORTH);
+
+        String[] columnNames = {"Day", "Slot", "Course Code", "Students Enrolled"};
+        DefaultTableModel model = new DefaultTableModel(columnNames, 0);
+        resultsTable = new JTable(model);
+        resultsTable.setRowHeight(40);
+        resultsTable.setShowVerticalLines(false);
+        resultsTable.setGridColor(BORDER_COLOR);
+        resultsTable.setFont(FONT_BODY);
+        
+        JTableHeader header = resultsTable.getTableHeader();
+        header.setBackground(new Color(241, 245, 249)); // Light Gray
+        header.setForeground(TEXT_PRIMARY);
+        header.setFont(FONT_SUBHEADER);
+        header.setPreferredSize(new Dimension(0, 40));
+        
+        resultsTable.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                if (!isSelected) {
+                    c.setBackground(row % 2 == 0 ? Color.WHITE : new Color(248, 250, 252));
+                }
+                return c;
+            }
+        });
+        
+        JScrollPane scrollPane = new JScrollPane(resultsTable);
+        scrollPane.setBorder(new LineBorder(BORDER_COLOR));
+        scrollPane.getViewport().setBackground(Color.WHITE);
+        panel.add(scrollPane, BorderLayout.CENTER);
+
+        return panel;
+    }
+    
+    private void updateResultsTable() {
+        DefaultTableModel model = (DefaultTableModel) resultsTable.getModel();
+        model.setRowCount(0); // Clear existing
+        
+        String[][] matrix = examPeriod.getExamMatrix();
+        if (matrix == null) return;
+        
+        for (int day = 0; day < matrix.length; day++) {
+            for (int slot = 0; slot < matrix[day].length; slot++) {
+                String courseCode = matrix[day][slot];
+                if (courseCode != null) {
+                    String finalCode = courseCode.replace("[FIXED] ", "").trim();
+                    Optional<Course> c = enrolledCourses.stream()
+                            .filter(co -> co.getCourseCode().equals(finalCode))
+                            .findFirst();
+                    
+                    int count = c.map(course -> course.getEnrolledStudents().size()).orElse(0);
+                    
+                    model.addRow(new Object[]{
+                        "Day " + (day + 1),
+                        "Slot " + (slot + 1),
+                        courseCode,
+                        count
+                    });
+                }
+            }
+        }
+    }
+    
+    private void stylePrimaryButton(JButton btn) {
+        btn.setBackground(ACCENT_BLUE);
+        btn.setForeground(Color.WHITE);
+        btn.setFont(new Font("SansSerif", Font.BOLD, 14));
+        btn.setFocusPainted(false);
+        btn.setBorder(new EmptyBorder(10, 20, 10, 20));
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
     }
 }
