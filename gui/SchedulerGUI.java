@@ -598,14 +598,15 @@ public class SchedulerGUI extends JFrame {
     }
 
     // --- Screen 4: Config Panel ---
+    // --- Screen 4: Config Panel (Version 1: Wide & Northwest Aligned) ---
     private JPanel createConfigPanel() {
         JPanel panel = new JPanel(new GridBagLayout());
         panel.setBackground(BG_CANVAS);
 
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridx = 0;
-        gbc.anchor = GridBagConstraints.NORTHWEST;
-        gbc.insets = new Insets(20, 40, 10, 40); // ← sola yaklaştırdık
+        gbc.anchor = GridBagConstraints.NORTHWEST; // Align content to the top-left
+        gbc.insets = new Insets(20, 40, 10, 40);
 
         // ===== PAGE TITLE =====
         JLabel title = new JLabel("Exam Period Setup");
@@ -623,13 +624,13 @@ public class SchedulerGUI extends JFrame {
         gbc.insets = new Insets(0, 40, 30, 40);
         panel.add(subtitle, gbc);
 
-        // ===== CONFIG CARD =====
+        // ===== CONFIG CARD (Wide Layout) =====
         JPanel card = new JPanel(new GridBagLayout());
         card.setBackground(Color.WHITE);
-        card.setPreferredSize(new Dimension(720, 360)); // ← DAHA BÜYÜK
+        card.setPreferredSize(new Dimension(720, 360)); // Wider card dimensions
 
         card.setBorder(BorderFactory.createCompoundBorder(
-                new LineBorder(new Color(59, 130, 246), 2, true),
+                new LineBorder(ACCENT_BLUE, 2, true),
                 new EmptyBorder(35, 50, 35, 50)
         ));
 
@@ -647,7 +648,7 @@ public class SchedulerGUI extends JFrame {
         cgbc.gridwidth = 2;
         card.add(cardTitle, cgbc);
 
-        // ---- Days ----
+        // ---- Days Input ----
         JLabel lblDays = new JLabel("Total Number of Exam Days");
         lblDays.setFont(FONT_BODY);
 
@@ -662,7 +663,7 @@ public class SchedulerGUI extends JFrame {
         cgbc.gridx = 1;
         card.add(spinDays, cgbc);
 
-        // ---- Slots ----
+        // ---- Slots Input ----
         JLabel lblSlots = new JLabel("Number of Slots per Day");
         lblSlots.setFont(FONT_BODY);
 
@@ -677,9 +678,9 @@ public class SchedulerGUI extends JFrame {
         cgbc.gridx = 1;
         card.add(spinSlots, cgbc);
 
-        // ---- Button ----
+        // ---- Action Button ----
         JButton btnSave = new JButton("Generate Grid Preview");
-        btnSave.setBackground(new Color(59, 130, 246));
+        btnSave.setBackground(ACCENT_BLUE);
         btnSave.setForeground(Color.WHITE);
         btnSave.setFont(new Font("SansSerif", Font.BOLD, 15));
         btnSave.setBorder(new EmptyBorder(14, 36, 14, 36));
@@ -704,9 +705,9 @@ public class SchedulerGUI extends JFrame {
         cgbc.insets = new Insets(30, 0, 0, 0);
         card.add(btnSave, cgbc);
 
-        // ===== ADD CARD =====
+        // ===== ADD CARD TO PANEL =====
         gbc.gridy = 2;
-        gbc.insets = new Insets(10, 40, 0, 40); // ← KART YUKARI ALINDI
+        gbc.insets = new Insets(10, 40, 0, 40);
         panel.add(card, gbc);
 
         JPanel wrapper = new JPanel(new BorderLayout());
@@ -715,7 +716,6 @@ public class SchedulerGUI extends JFrame {
 
         return wrapper;
     }
-
 
     // --- Screen 5: Scheduler Panel (Terminal Design) ---
     private JPanel createSchedulerPanel() {
