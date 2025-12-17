@@ -601,72 +601,121 @@ public class SchedulerGUI extends JFrame {
     private JPanel createConfigPanel() {
         JPanel panel = new JPanel(new GridBagLayout());
         panel.setBackground(BG_CANVAS);
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(15, 15, 15, 15);
 
-        JLabel title = new JLabel("Configuration Center");
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.anchor = GridBagConstraints.NORTHWEST;
+        gbc.insets = new Insets(20, 40, 10, 40); // ← sola yaklaştırdık
+
+        // ===== PAGE TITLE =====
+        JLabel title = new JLabel("Exam Period Setup");
         title.setFont(FONT_HEADER);
         title.setForeground(TEXT_PRIMARY);
-        gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2;
-        gbc.insets = new Insets(0, 0, 40, 0);
+
+        gbc.gridy = 0;
         panel.add(title, gbc);
 
-        gbc.insets = new Insets(15, 15, 15, 15);
+        JLabel subtitle = new JLabel("Define the exam period structure");
+        subtitle.setFont(FONT_BODY);
+        subtitle.setForeground(TEXT_SECONDARY);
 
-        JPanel formCard = new JPanel(new GridBagLayout());
-        formCard.setBackground(BG_CARD);
-        formCard.setBorder(new LineBorder(BORDER_COLOR));
+        gbc.gridy = 1;
+        gbc.insets = new Insets(0, 40, 30, 40);
+        panel.add(subtitle, gbc);
 
-        GridBagConstraints fgbc = new GridBagConstraints();
-        fgbc.insets = new Insets(10, 10, 10, 10);
+        // ===== CONFIG CARD =====
+        JPanel card = new JPanel(new GridBagLayout());
+        card.setBackground(Color.WHITE);
+        card.setPreferredSize(new Dimension(720, 360)); // ← DAHA BÜYÜK
 
-        JLabel lblDays = new JLabel("Exam Duration (Days):");
-        lblDays.setFont(FONT_SUBHEADER);
-        fgbc.gridx = 0; fgbc.gridy = 0; fgbc.anchor = GridBagConstraints.EAST;
-        formCard.add(lblDays, fgbc);
+        card.setBorder(BorderFactory.createCompoundBorder(
+                new LineBorder(new Color(59, 130, 246), 2, true),
+                new EmptyBorder(35, 50, 35, 50)
+        ));
+
+        GridBagConstraints cgbc = new GridBagConstraints();
+        cgbc.insets = new Insets(14, 14, 14, 14);
+        cgbc.fill = GridBagConstraints.HORIZONTAL;
+
+        // ---- Card Title ----
+        JLabel cardTitle = new JLabel("Period Configuration");
+        cardTitle.setFont(FONT_SUBHEADER);
+        cardTitle.setForeground(TEXT_PRIMARY);
+
+        cgbc.gridx = 0;
+        cgbc.gridy = 0;
+        cgbc.gridwidth = 2;
+        card.add(cardTitle, cgbc);
+
+        // ---- Days ----
+        JLabel lblDays = new JLabel("Total Number of Exam Days");
+        lblDays.setFont(FONT_BODY);
+
+        cgbc.gridy = 1;
+        cgbc.gridwidth = 1;
+        card.add(lblDays, cgbc);
 
         spinDays = new JSpinner(new SpinnerNumberModel(5, 1, 30, 1));
-        spinDays.setPreferredSize(new Dimension(120, 40));
-        spinDays.setFont(FONT_SUBHEADER);
-        fgbc.gridx = 1; fgbc.anchor = GridBagConstraints.WEST;
-        formCard.add(spinDays, fgbc);
+        spinDays.setPreferredSize(new Dimension(160, 40));
+        spinDays.setFont(FONT_BODY);
 
-        JLabel lblSlots = new JLabel("Daily Slots:");
-        lblSlots.setFont(FONT_SUBHEADER);
-        fgbc.gridx = 0; fgbc.gridy = 1; fgbc.anchor = GridBagConstraints.EAST;
-        formCard.add(lblSlots, fgbc);
+        cgbc.gridx = 1;
+        card.add(spinDays, cgbc);
+
+        // ---- Slots ----
+        JLabel lblSlots = new JLabel("Number of Slots per Day");
+        lblSlots.setFont(FONT_BODY);
+
+        cgbc.gridx = 0;
+        cgbc.gridy = 2;
+        card.add(lblSlots, cgbc);
 
         spinSlots = new JSpinner(new SpinnerNumberModel(4, 1, 10, 1));
-        spinSlots.setPreferredSize(new Dimension(120, 40));
-        spinSlots.setFont(FONT_SUBHEADER);
-        fgbc.gridx = 1; fgbc.anchor = GridBagConstraints.WEST;
-        formCard.add(spinSlots, fgbc);
+        spinSlots.setPreferredSize(new Dimension(160, 40));
+        spinSlots.setFont(FONT_BODY);
 
-        gbc.gridy = 1; gbc.gridwidth = 2;
-        panel.add(formCard, gbc);
+        cgbc.gridx = 1;
+        card.add(spinSlots, cgbc);
 
-        JButton btnSave = new JButton("Save & Apply Config");
-        btnSave.setBackground(SUCCESS_GREEN);
+        // ---- Button ----
+        JButton btnSave = new JButton("Generate Grid Preview");
+        btnSave.setBackground(new Color(59, 130, 246));
         btnSave.setForeground(Color.WHITE);
-        btnSave.setFont(new Font("SansSerif", Font.BOLD, 14));
+        btnSave.setFont(new Font("SansSerif", Font.BOLD, 15));
+        btnSave.setBorder(new EmptyBorder(14, 36, 14, 36));
         btnSave.setFocusPainted(false);
-        btnSave.setBorder(new EmptyBorder(12, 24, 12, 24));
+        btnSave.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
         btnSave.addActionListener(e -> {
             int days = (Integer) spinDays.getValue();
             int slots = (Integer) spinSlots.getValue();
             this.examPeriod = new ExamPeriod(days, slots);
-            JOptionPane.showMessageDialog(this, "Configuration Saved: " + days + " Days, " + slots + " Slots.");
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Exam period configured successfully!",
+                    "Configuration Saved",
+                    JOptionPane.INFORMATION_MESSAGE
+            );
         });
 
-        gbc.gridy = 2; gbc.insets = new Insets(30, 0, 0, 0);
-        panel.add(btnSave, gbc);
+        cgbc.gridx = 0;
+        cgbc.gridy = 3;
+        cgbc.gridwidth = 2;
+        cgbc.insets = new Insets(30, 0, 0, 0);
+        card.add(btnSave, cgbc);
+
+        // ===== ADD CARD =====
+        gbc.gridy = 2;
+        gbc.insets = new Insets(10, 40, 0, 40); // ← KART YUKARI ALINDI
+        panel.add(card, gbc);
 
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.setBackground(BG_CANVAS);
         wrapper.add(panel, BorderLayout.NORTH);
+
         return wrapper;
     }
+
 
     // --- Screen 5: Scheduler Panel (Terminal Design) ---
     private JPanel createSchedulerPanel() {
