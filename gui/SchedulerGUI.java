@@ -1480,6 +1480,7 @@ public class SchedulerGUI extends JFrame {
         DefaultTableModel model = new DefaultTableModel(columns, 0);
         resultsTable.setModel(model);
     }
+    // gets data from database if user imported files before
     private void loadFromDatabaseIfAvailable() {
 
         if (!studentDAO.isEmpty()) {
