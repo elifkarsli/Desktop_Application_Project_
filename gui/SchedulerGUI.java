@@ -1,6 +1,6 @@
 package Desktop_Application_Project_.gui;
 
-import Desktop_Application_Project_.service.ScheduleCSVExporter;
+import Desktop_Application_Project_.service.*;
 import Desktop_Application_Project_.model.DomainModels.ExamPeriod;
 import Desktop_Application_Project_.exception.DataImportException;
 import Desktop_Application_Project_.model.DomainModels.Classroom;
@@ -9,10 +9,6 @@ import Desktop_Application_Project_.model.DomainModels.FixedExam;
 import Desktop_Application_Project_.model.DomainModels.Student;
 import Desktop_Application_Project_.parser.Parser;
 import Desktop_Application_Project_.parser.impl.CoreParsers;
-import Desktop_Application_Project_.service.DataValidator;
-import Desktop_Application_Project_.service.ExamSchedulerService;
-import Desktop_Application_Project_.service.FixedExamService;
-import Desktop_Application_Project_.service.SuggestionEngine;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -38,7 +34,8 @@ public class SchedulerGUI extends JFrame {
     private List<Classroom> classrooms;
     private List<Course> masterCourses;
     private List<Course> enrolledCourses;
-    
+    private JComboBox<String> courseSelector;
+
     // Scheduling Objects
     private ExamPeriod examPeriod;
     private List<FixedExam> fixedExams = new ArrayList<>();
@@ -79,7 +76,6 @@ public class SchedulerGUI extends JFrame {
         this.classrooms = classrooms;
         this.masterCourses = masterCourses;
         this.enrolledCourses = enrolledCourses;
-
         // Default Configuration
         this.examPeriod = new ExamPeriod(5, 4);
 
@@ -116,6 +112,11 @@ public class SchedulerGUI extends JFrame {
         
         // Initial Stat Update
         updateStats();
+
+        refreshCourseSelector(courseSelector);
+        updateResultsTable();
+        updateStats();
+
     }
 
     // --- Helper Methods to Build UI ---
@@ -349,34 +350,63 @@ public class SchedulerGUI extends JFrame {
                 Parser<Classroom> roomParser = new CoreParsers.ClassroomParser();
                 classrooms = roomParser.parse(new File(txtRoom.getText()));
                 
-                // --- FIX: HANDLE RAW TYPE FOR ATTENDANCE PARSER ---
+                //  HANDLE RAW TYPE FOR ATTENDANCE PARSER ---
                 Parser attendanceParser = new CoreParsers.AttendanceParser();
                 List<?> rawAttendanceData = attendanceParser.parse(new File(txtAtt.getText()));
 
+                // HANDLE ATTENDANCE IMPORT (CRITICAL FIX) ---
                 if (!rawAttendanceData.isEmpty() && rawAttendanceData.get(0) instanceof String[]) {
-                    // DB Format Detected: [courseCode, studentId]
-                    List<String[]> rows = (List<String[]>) rawAttendanceData;
-                    
-                    // Clear previous enrollments in Master Courses
-                    for(Course c : masterCourses) { c.getEnrolledStudents().clear(); }
 
-                    // Manually link
+                    List<String[]> rows = (List<String[]>) rawAttendanceData;
+
+                    //Clear previous enrollments
+                    for (Course c : masterCourses) {
+                        c.getEnrolledStudents().clear();
+                    }
+
+                    //Manually link students to courses
                     for (String[] row : rows) {
                         if (row.length < 2) continue;
-                        String courseCode = row[0];
-                        String studentId = row[1];
+
+                        String studentId = row[0];
+                        String courseCode = row[1];
 
                         Optional<Course> courseOpt = masterCourses.stream()
-                            .filter(c -> c.getCourseCode().equals(courseCode)).findFirst();
+                                .filter(c -> c.getCourseCode().equals(courseCode))
+                                .findFirst();
+
                         Optional<Student> studentOpt = students.stream()
-                            .filter(s -> s.getId().equals(studentId)).findFirst();
+                                .filter(s -> s.getId().equals(studentId))
+                                .findFirst();
 
                         if (courseOpt.isPresent() && studentOpt.isPresent()) {
                             courseOpt.get().enrollStudent(studentOpt.get());
                         }
                     }
-                    // Enrolled courses are now the populated master courses
+
                     enrolledCourses = masterCourses;
+
+                    StudentDAO studentDAO = new StudentDAO();
+                    CourseDAO courseDAO = new CourseDAO();
+                    ClassroomDAO classroomDAO = new ClassroomDAO();
+                    AttendanceDAO attendanceDAO = new AttendanceDAO();
+                    // Insert base entities
+                    studentDAO.insertStudents(students);
+                    courseDAO.insertCourses(masterCourses);
+                    classroomDAO.insertClassrooms(classrooms);
+                    // Insert attendance relations
+                    List<String[]> attendanceRowsForDB = new ArrayList<>();
+
+                    for (Course c : masterCourses) {
+                        for (Student s : c.getEnrolledStudents()) {
+                            attendanceRowsForDB.add(
+                                    new String[]{s.getId(), c.getCourseCode()}
+                            );
+                        }
+                    }
+
+                    attendanceDAO.insertAttendance(attendanceRowsForDB);
+
 
                 } else if (!rawAttendanceData.isEmpty() && rawAttendanceData.get(0) instanceof Course) {
                     // Legacy Format Detected (List<Course>)
@@ -389,6 +419,14 @@ public class SchedulerGUI extends JFrame {
                 if (new File(txtFixed.getText()).exists()) {
                     Parser<FixedExam> fixedParser = new CoreParsers.FixedExamParser();
                     fixedExams = fixedParser.parse(new File(txtFixed.getText()));
+                }
+
+                // Refresh course selector AFTER import
+                courseSelector.removeAllItems();
+                courseSelector.addItem("Select Course");
+
+                for (Course c : masterCourses) {
+                    courseSelector.addItem(c.getCourseCode());
                 }
 
                 updateStats();
@@ -746,11 +784,8 @@ public class SchedulerGUI extends JFrame {
         viewSelector.addItem("View by Classroom");
 
         // COURSE SELECTOR
-        JComboBox<String> courseSelector = new JComboBox<>();
+        courseSelector = new JComboBox<>();
         courseSelector.addItem("Select Course");
-        for (Course c : masterCourses) {
-            courseSelector.addItem(c.getCourseCode());
-        }
 
         // DEFAULT STATES
         courseSelector.setEnabled(false);
@@ -1090,5 +1125,4 @@ public class SchedulerGUI extends JFrame {
         DefaultTableModel model = new DefaultTableModel(columns, 0);
         resultsTable.setModel(model);
     }
-
 }
