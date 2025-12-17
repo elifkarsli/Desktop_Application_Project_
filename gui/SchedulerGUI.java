@@ -65,7 +65,7 @@ public class SchedulerGUI extends JFrame {
     private final Color SUCCESS_GREEN = new Color(34, 197, 94);    // Pastel Green
     private final Color ERROR_RED = new Color(239, 68, 68);        // Pastel Red
     
-    // Fonts
+    // Fonts for GUI
     private final Font FONT_HEADER = new Font("SansSerif", Font.BOLD, 24);
     private final Font FONT_SUBHEADER = new Font("SansSerif", Font.BOLD, 14);
     private final Font FONT_BODY = new Font("SansSerif", Font.PLAIN, 13);
