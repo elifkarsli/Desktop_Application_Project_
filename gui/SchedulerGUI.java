@@ -35,6 +35,11 @@ public class SchedulerGUI extends JFrame {
     private List<Course> masterCourses;
     private List<Course> enrolledCourses;
     private JComboBox<String> courseSelector;
+    private final StudentDAO studentDAO = new StudentDAO();
+    private final CourseDAO courseDAO = new CourseDAO();
+    private final ClassroomDAO classroomDAO = new ClassroomDAO();
+    private final AttendanceDAO attendanceDAO = new AttendanceDAO();
+    private final CourseEnrollmentService enrollmentService = new CourseEnrollmentService();
 
     // Scheduling Objects
     private ExamPeriod examPeriod;
@@ -78,6 +83,7 @@ public class SchedulerGUI extends JFrame {
         this.enrolledCourses = enrolledCourses;
         // Default Configuration
         this.examPeriod = new ExamPeriod(5, 4);
+        loadFromDatabaseIfAvailable();
 
         // Basic Frame Setup
         setTitle("University Exam Scheduler System");
@@ -1124,5 +1130,24 @@ public class SchedulerGUI extends JFrame {
     private void setTableColumns(String[] columns) {
         DefaultTableModel model = new DefaultTableModel(columns, 0);
         resultsTable.setModel(model);
+    }
+    private void loadFromDatabaseIfAvailable() {
+
+        if (!studentDAO.isEmpty()) {
+            students = studentDAO.getAllStudents();
+        }
+
+        if (!courseDAO.isEmpty()) {
+            masterCourses = courseDAO.getAllCourses();
+        }
+
+        if (!classroomDAO.isEmpty()) {
+            classrooms = classroomDAO.getAllClassrooms();
+        }
+
+        if (!attendanceDAO.isEmpty()) {
+            enrollmentService.loadEnrollments(masterCourses, students);
+            enrolledCourses = masterCourses;
+        }
     }
 }
