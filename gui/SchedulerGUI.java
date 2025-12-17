@@ -51,6 +51,7 @@ public class SchedulerGUI extends JFrame {
     // Main Content Area (CardLayout for switching screens)
     private JPanel mainContentPanel;
     private CardLayout cardLayout;
+    private boolean isUpdatingFilter = false;
 
     // UI Components for updates
     private JLabel lblStudentCount, lblClassroomCount, lblCourseCount, lblAttendanceCount;
@@ -69,7 +70,7 @@ public class SchedulerGUI extends JFrame {
     private final Color BORDER_COLOR = new Color(226, 232, 240);   // Light Gray Border
     private final Color SUCCESS_GREEN = new Color(34, 197, 94);    // Pastel Green
     private final Color ERROR_RED = new Color(239, 68, 68);        // Pastel Red
-    
+
     // Fonts for GUI
     private final Font FONT_HEADER = new Font("SansSerif", Font.BOLD, 24);
     private final Font FONT_SUBHEADER = new Font("SansSerif", Font.BOLD, 14);
@@ -115,7 +116,7 @@ public class SchedulerGUI extends JFrame {
         mainContentPanel.add(createResultsPanel(), "results");
 
         add(mainContentPanel, BorderLayout.CENTER);
-        
+
         // Initial Stat Update
         updateStats();
 
@@ -160,9 +161,9 @@ public class SchedulerGUI extends JFrame {
         sidebar.add(btnConfig);
         sidebar.add(btnScheduler);
         sidebar.add(btnResults);
-        
+
         // Spacer to push content up
-        sidebar.add(Box.createGlue()); 
+        sidebar.add(Box.createGlue());
 
         return sidebar;
     }
@@ -176,7 +177,7 @@ public class SchedulerGUI extends JFrame {
         btn.setHorizontalAlignment(SwingConstants.LEFT);
         btn.setBorder(new EmptyBorder(10, 15, 10, 15));
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        
+
         // Simple hover effect logic
         btn.addMouseListener(new MouseAdapter() {
             public void mouseEntered(MouseEvent evt) {
@@ -188,7 +189,7 @@ public class SchedulerGUI extends JFrame {
                 btn.setForeground(new Color(203, 213, 225));
             }
         });
-        
+
         return btn;
     }
 
@@ -205,7 +206,7 @@ public class SchedulerGUI extends JFrame {
         JLabel lblToast = new JLabel("System Ready   ");
         lblToast.setForeground(SUCCESS_GREEN);
         lblToast.setFont(new Font("SansSerif", Font.BOLD, 12));
-        lblToast.setIcon(UIManager.getIcon("FileView.floppyDriveIcon")); 
+        lblToast.setIcon(UIManager.getIcon("FileView.floppyDriveIcon"));
 
         topBar.add(lblHeader, BorderLayout.WEST);
         topBar.add(lblToast, BorderLayout.EAST);
@@ -253,11 +254,11 @@ public class SchedulerGUI extends JFrame {
             new LineBorder(BORDER_COLOR, 1),
             new EmptyBorder(20, 20, 20, 20)
         ));
-        
+
         JLabel lblActivityTitle = new JLabel("Recent Activities");
         lblActivityTitle.setFont(FONT_SUBHEADER);
         lblActivityTitle.setForeground(TEXT_PRIMARY);
-        
+
         JTextArea activityList = new JTextArea();
         activityList.setText("• System initialized successfully.\n• Waiting for data import...\n• No conflicts detected in previous run.");
         activityList.setFont(FONT_BODY);
@@ -265,7 +266,7 @@ public class SchedulerGUI extends JFrame {
         activityList.setEditable(false);
         activityList.setLineWrap(true);
         activityList.setBackground(BG_CARD);
-        
+
         activityPanel.add(lblActivityTitle, BorderLayout.NORTH);
         activityPanel.add(Box.createVerticalStrut(10), BorderLayout.CENTER); // Spacer
         activityPanel.add(activityList, BorderLayout.SOUTH);
@@ -278,7 +279,7 @@ public class SchedulerGUI extends JFrame {
         panel.add(centerContainer, BorderLayout.CENTER);
         return panel;
     }
-    
+
     private JLabel createStatLabel() {
         JLabel lbl = new JLabel("0");
         lbl.setFont(new Font("SansSerif", Font.BOLD, 36));
@@ -312,7 +313,7 @@ public class SchedulerGUI extends JFrame {
 
         return card;
     }
-    
+
     private void updateStats() {
         lblStudentCount.setText(String.valueOf(students != null ? students.size() : 0));
         lblClassroomCount.setText(String.valueOf(classrooms != null ? classrooms.size() : 0));
@@ -343,19 +344,19 @@ public class SchedulerGUI extends JFrame {
 
         JButton btnLoad = new JButton("Load & Parse Files");
         stylePrimaryButton(btnLoad);
-        
+
         btnLoad.addActionListener(e -> {
             try {
                 // Parsing Logic
                 Parser<Student> studentParser = new CoreParsers.StudentParser();
                 students = studentParser.parse(new File(txtStudent.getText()));
-                
+
                 Parser<Course> courseParser = new CoreParsers.CourseParser();
                 masterCourses = courseParser.parse(new File(txtCourse.getText()));
-                
+
                 Parser<Classroom> roomParser = new CoreParsers.ClassroomParser();
                 classrooms = roomParser.parse(new File(txtRoom.getText()));
-                
+
                 //  HANDLE RAW TYPE FOR ATTENDANCE PARSER ---
                 Parser attendanceParser = new CoreParsers.AttendanceParser();
                 List<?> rawAttendanceData = attendanceParser.parse(new File(txtAtt.getText()));
@@ -421,7 +422,7 @@ public class SchedulerGUI extends JFrame {
                     // Empty list or unknown type
                     enrolledCourses = new ArrayList<>();
                 }
-                
+
                 if (new File(txtFixed.getText()).exists()) {
                     Parser<FixedExam> fixedParser = new CoreParsers.FixedExamParser();
                     fixedExams = fixedParser.parse(new File(txtFixed.getText()));
@@ -437,12 +438,12 @@ public class SchedulerGUI extends JFrame {
 
                 updateStats();
                 JOptionPane.showMessageDialog(this, "Data Loaded Successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
-                
+
             } catch (DataImportException ex) {
                 JOptionPane.showMessageDialog(this, "Error loading data: " + ex.getMessage(), "Import Error", JOptionPane.ERROR_MESSAGE);
             }
         });
-        
+
         gbc.gridy = 4; gbc.gridwidth = 2; gbc.anchor = GridBagConstraints.CENTER;
         gbc.fill = GridBagConstraints.NONE;
         gbc.insets = new Insets(40, 0, 0, 0);
@@ -459,7 +460,7 @@ public class SchedulerGUI extends JFrame {
         JPanel zone = new JPanel(new BorderLayout());
         zone.setBackground(BG_CARD);
         zone.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        
+
         // Dashed Border Simulation
         zone.setBorder(BorderFactory.createCompoundBorder(
                 new DashedBorder(TEXT_SECONDARY), // Custom dashed look
@@ -470,14 +471,14 @@ public class SchedulerGUI extends JFrame {
         JLabel lbl = new JLabel(labelText, SwingConstants.CENTER);
         lbl.setFont(new Font("SansSerif", Font.BOLD, 14));
         lbl.setForeground(TEXT_PRIMARY);
-        
+
         JTextField txtPath = new JTextField(defaultPath);
         txtPath.setBorder(null);
         txtPath.setBackground(BG_CARD);
         txtPath.setHorizontalAlignment(SwingConstants.CENTER);
         txtPath.setForeground(TEXT_SECONDARY);
-        txtPath.setEditable(false); 
-        
+        txtPath.setEditable(false);
+
         JLabel lblIcon = new JLabel("↓ Click to Browse CSV", SwingConstants.CENTER);
         lblIcon.setForeground(ACCENT_BLUE);
         lblIcon.setFont(new Font("SansSerif", Font.PLAIN, 12));
@@ -491,10 +492,10 @@ public class SchedulerGUI extends JFrame {
             @Override
             public void mouseClicked(MouseEvent e) {
                 JFileChooser fileChooser = new JFileChooser();
-                fileChooser.setCurrentDirectory(new File(".")); 
+                fileChooser.setCurrentDirectory(new File("."));
                 FileNameExtensionFilter filter = new FileNameExtensionFilter("CSV Files", "csv");
                 fileChooser.setFileFilter(filter);
-                
+
                 int result = fileChooser.showOpenDialog(SchedulerGUI.this);
                 if (result == JFileChooser.APPROVE_OPTION) {
                     File selectedFile = fileChooser.getSelectedFile();
@@ -514,7 +515,7 @@ public class SchedulerGUI extends JFrame {
                 txtPath.setBackground(BG_CARD);
             }
         };
-        
+
         zone.addMouseListener(openChooser);
         txtPath.addMouseListener(openChooser);
         lblIcon.addMouseListener(openChooser);
@@ -526,7 +527,7 @@ public class SchedulerGUI extends JFrame {
         gbc.gridx = col;
         gbc.gridy = row;
         panel.add(zone, gbc);
-        
+
         return txtPath;
     }
 
@@ -543,36 +544,36 @@ public class SchedulerGUI extends JFrame {
             g2d.setStroke(oldStroke);
         }
     }
-    
+
     // --- Screen 3: Validation Panel ---
     private JPanel createValidatePanel() {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBackground(BG_CANVAS);
         panel.setBorder(new EmptyBorder(40, 40, 40, 40));
-        
+
         JLabel title = new JLabel("Data Integrity Check");
         title.setFont(FONT_HEADER);
         title.setForeground(TEXT_PRIMARY);
         title.setBorder(new EmptyBorder(0, 0, 20, 0));
         panel.add(title, BorderLayout.NORTH);
-        
+
         validationLogArea = new JTextArea();
         validationLogArea.setEditable(false);
         validationLogArea.setFont(FONT_MONO);
         validationLogArea.setBackground(BG_CARD);
         validationLogArea.setBorder(new EmptyBorder(10, 10, 10, 10));
-        
+
         JScrollPane scroll = new JScrollPane(validationLogArea);
         scroll.setBorder(new LineBorder(BORDER_COLOR));
         panel.add(scroll, BorderLayout.CENTER);
-        
+
         JButton btnRunValidation = new JButton("Run Validation Check");
         stylePrimaryButton(btnRunValidation);
-        
+
         btnRunValidation.addActionListener(e -> {
             DataValidator validator = new DataValidator();
             List<String> errors = validator.validate(students, classrooms, masterCourses, enrolledCourses);
-            
+
             validationLogArea.setText("");
             if (errors.isEmpty()) {
                 validationLogArea.append("✔ SUCCESS: All data is valid.\n");
@@ -586,13 +587,13 @@ public class SchedulerGUI extends JFrame {
                 validationLogArea.setForeground(ERROR_RED);
             }
         });
-        
+
         JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         btnPanel.setBackground(BG_CANVAS);
         btnPanel.setBorder(new EmptyBorder(20, 0, 0, 0));
         btnPanel.add(btnRunValidation);
         panel.add(btnPanel, BorderLayout.SOUTH);
-        
+
         return panel;
     }
 
@@ -602,7 +603,7 @@ public class SchedulerGUI extends JFrame {
         panel.setBackground(BG_CANVAS);
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(15, 15, 15, 15);
-        
+
         JLabel title = new JLabel("Configuration Center");
         title.setFont(FONT_HEADER);
         title.setForeground(TEXT_PRIMARY);
@@ -615,15 +616,15 @@ public class SchedulerGUI extends JFrame {
         JPanel formCard = new JPanel(new GridBagLayout());
         formCard.setBackground(BG_CARD);
         formCard.setBorder(new LineBorder(BORDER_COLOR));
-        
+
         GridBagConstraints fgbc = new GridBagConstraints();
         fgbc.insets = new Insets(10, 10, 10, 10);
-        
+
         JLabel lblDays = new JLabel("Exam Duration (Days):");
         lblDays.setFont(FONT_SUBHEADER);
         fgbc.gridx = 0; fgbc.gridy = 0; fgbc.anchor = GridBagConstraints.EAST;
         formCard.add(lblDays, fgbc);
-        
+
         spinDays = new JSpinner(new SpinnerNumberModel(5, 1, 30, 1));
         spinDays.setPreferredSize(new Dimension(120, 40));
         spinDays.setFont(FONT_SUBHEADER);
@@ -645,19 +646,19 @@ public class SchedulerGUI extends JFrame {
         panel.add(formCard, gbc);
 
         JButton btnSave = new JButton("Save & Apply Config");
-        btnSave.setBackground(SUCCESS_GREEN); 
+        btnSave.setBackground(SUCCESS_GREEN);
         btnSave.setForeground(Color.WHITE);
         btnSave.setFont(new Font("SansSerif", Font.BOLD, 14));
         btnSave.setFocusPainted(false);
         btnSave.setBorder(new EmptyBorder(12, 24, 12, 24));
-        
+
         btnSave.addActionListener(e -> {
             int days = (Integer) spinDays.getValue();
             int slots = (Integer) spinSlots.getValue();
             this.examPeriod = new ExamPeriod(days, slots);
             JOptionPane.showMessageDialog(this, "Configuration Saved: " + days + " Days, " + slots + " Slots.");
         });
-        
+
         gbc.gridy = 2; gbc.insets = new Insets(30, 0, 0, 0);
         panel.add(btnSave, gbc);
 
@@ -666,20 +667,20 @@ public class SchedulerGUI extends JFrame {
         wrapper.add(panel, BorderLayout.NORTH);
         return wrapper;
     }
-    
+
     // --- Screen 5: Scheduler Panel (Terminal Design) ---
     private JPanel createSchedulerPanel() {
         JPanel panel = new JPanel(new GridBagLayout());
         panel.setBackground(BG_CANVAS);
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(20, 20, 20, 20);
-        
+
         JLabel title = new JLabel("Scheduler Execution");
         title.setFont(FONT_HEADER);
         title.setForeground(TEXT_PRIMARY);
         gbc.gridx = 0; gbc.gridy = 0; gbc.anchor = GridBagConstraints.WEST;
         panel.add(title, gbc);
-        
+
         // Terminal-like Log Area
         JTextArea logArea = new JTextArea(20, 60);
         logArea.setEditable(false);
@@ -688,25 +689,25 @@ public class SchedulerGUI extends JFrame {
         logArea.setFont(new Font("Monospaced", Font.PLAIN, 14));
         logArea.setText("> Waiting for command...\n");
         logArea.setBorder(new EmptyBorder(15, 15, 15, 15));
-        
+
         JScrollPane scroll = new JScrollPane(logArea);
         scroll.setBorder(new LineBorder(BORDER_COLOR));
         gbc.gridy = 1;
         panel.add(scroll, gbc);
-        
+
         JButton btnRun = new JButton("▶ Start Automatic Scheduling");
         stylePrimaryButton(btnRun);
         btnRun.setFont(new Font("SansSerif", Font.BOLD, 16));
         btnRun.setPreferredSize(new Dimension(300, 50));
-        
+
         btnRun.addActionListener(e -> {
             logArea.setText("> Initializing Scheduler...\n");
-            
+
             int days = (Integer) spinDays.getValue();
             int slots = (Integer) spinSlots.getValue();
             this.examPeriod = new ExamPeriod(days, slots);
             logArea.append("> Exam Period Set: " + days + " days, " + slots + " slots.\n");
-            
+
             FixedExamService fixedService = new FixedExamService();
             int fixedCount = 0;
             for (FixedExam fx : fixedExams) {
@@ -723,10 +724,10 @@ public class SchedulerGUI extends JFrame {
                 }
             }
             logArea.append("> Assigned " + fixedCount + " fixed exams.\n");
-            
+
             ExamSchedulerService schedulerService = new ExamSchedulerService();
             List<Course> unplaced = schedulerService.scheduleRegularExams(enrolledCourses, classrooms, examPeriod);
-            
+
             if (unplaced.isEmpty()) {
                 logArea.append("> SUCCESS: All exams scheduled successfully!\n");
                 logArea.append("> Process finished with code 0.");
@@ -736,12 +737,12 @@ public class SchedulerGUI extends JFrame {
             } else {
                 logArea.append("> FAILURE: Could not place " + unplaced.size() + " courses.\n");
                 logArea.append("> Triggering Suggestion Engine...\n");
-                
+
                 // --- CAPTURE SUGGESTION ENGINE OUTPUT ---
                 PrintStream originalOut = System.out;
                 ByteArrayOutputStream baos = new ByteArrayOutputStream();
                 PrintStream captureOut = new PrintStream(baos);
-                
+
                 try {
                     System.setOut(captureOut);
                     SuggestionEngine suggestionEngine = new SuggestionEngine();
@@ -750,19 +751,59 @@ public class SchedulerGUI extends JFrame {
                 } finally {
                     System.setOut(originalOut);
                 }
-                
+
                 logArea.append(baos.toString());
-                
+
                 logArea.append("> Check above for detailed suggestions.\n");
                 JOptionPane.showMessageDialog(this, "Scheduling Failed. Check terminal for details.", "Warning", JOptionPane.WARNING_MESSAGE);
             }
         });
-        
+
         gbc.gridy = 2;
         panel.add(btnRun, gbc);
-        
+
         return panel;
     }
+    private void refreshTableAccordingToCurrentState(String view) {
+
+        String selected = (String) courseSelector.getSelectedItem();
+
+        if (selected == null || selected.startsWith("Select")) {
+            switch (view) {
+                case "View by Day":
+                    updateResultsTableByAllDays();
+                    return;
+                case "View by Course":
+                    updateResultsTableByAllCourses();
+                    return;
+                case "View by Student":
+                    updateResultsTableByAllStudents();
+                    return;
+                case "View by Classroom":
+                    updateResultsTableByAllClassrooms();
+                    return;
+                default:
+                    updateResultsTable();
+                    return;
+            }
+        }
+
+        switch (view) {
+            case "View by Day":
+                updateResultsTableByDay(selected);
+                break;
+            case "View by Course":
+                updateResultsTableByCourse(selected);
+                break;
+            case "View by Student":
+                updateResultsTableByStudent(selected);
+                break;
+            case "View by Classroom":
+                updateResultsTableByClassroom(selected);
+                break;
+        }
+    }
+
 
     // --- Screen 6: Results Panel (Modern Data Table) ---
     private JPanel createResultsPanel() {
@@ -784,6 +825,7 @@ public class SchedulerGUI extends JFrame {
 
         // VIEW SELECTOR (FR-6)
         JComboBox<String> viewSelector = new JComboBox<>();
+        viewSelector.addItem("View by All");
         viewSelector.addItem("View by Day");
         viewSelector.addItem("View by Course");
         viewSelector.addItem("View by Student");
@@ -798,41 +840,84 @@ public class SchedulerGUI extends JFrame {
 
         // VIEW CHANGE LOGIC
         viewSelector.addActionListener(e -> {
+
             String view = (String) viewSelector.getSelectedItem();
 
+            courseSelector.removeAllItems();
+            courseSelector.setEnabled(false);
+
             switch (view) {
-                case "View by Day":
-                    courseSelector.setEnabled(false);
+
+                case "View by All":
                     updateResultsTable();
                     break;
 
-                case "View by Course":
+                case "View by Day":
+                    courseSelector.addItem("Select Day");
+                    for (int i = 1; i <= examPeriod.getTotalDays(); i++) {
+                        courseSelector.addItem("Day " + i);
+                    }
                     courseSelector.setEnabled(true);
+                    updateResultsTableByAllDays();
+                    break;
+
+                case "View by Course":
+                    courseSelector.addItem("Select Course");
+                    for (Course c : masterCourses) {
+                        courseSelector.addItem(c.getCourseCode());
+                    }
+                    courseSelector.setEnabled(true);
+                    updateResultsTableByAllCourses();
                     break;
 
                 case "View by Student":
-                    courseSelector.setEnabled(false);
-                    updateResultsTableByStudent(); // IMPLEMENT NEXT
+                    courseSelector.addItem("Select Student");
+                    for (Student s : students) {
+                        courseSelector.addItem(s.getId());
+                    }
+                    courseSelector.setEnabled(true);
+                    updateResultsTableByAllStudents();
                     break;
 
                 case "View by Classroom":
-                    courseSelector.setEnabled(false);
-                    updateResultsTableByClassroom(); // IMPLEMENT NEXT
+                    courseSelector.addItem("Select Classroom");
+                    for (Classroom c : classrooms) {
+                        courseSelector.addItem(c.getName());
+                    }
+                    courseSelector.setEnabled(true);
+                    updateResultsTableByAllClassrooms();
                     break;
             }
         });
+
+
 
         // COURSE FILTER LOGIC
         courseSelector.addActionListener(e -> {
             if (!courseSelector.isEnabled()) return;
 
             String selected = (String) courseSelector.getSelectedItem();
-            if (selected == null || selected.equals("Select Course")) {
-                updateResultsTable();
-            } else {
-                updateResultsTableByCourse(selected);
+            if (selected == null || selected.startsWith("Select")) return;
+
+            String view = (String) viewSelector.getSelectedItem();
+
+            switch (view) {
+                case "View by Day":
+                    updateResultsTableByDay(selected);
+                    break;
+                case "View by Course":
+                    updateResultsTableByCourse(selected);
+                    break;
+                case "View by Student":
+                    updateResultsTableByStudent(selected);
+                    break;
+                case "View by Classroom":
+                    updateResultsTableByClassroom(selected);
+                    break;
             }
         });
+
+
 
         // BUTTONS
         JButton btnExport = new JButton("Export CSV");
@@ -983,13 +1068,56 @@ public class SchedulerGUI extends JFrame {
         btn.setBorder(new EmptyBorder(10, 20, 10, 20));
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
     }
-    private void updateResultsTableByCourse(String courseCode) {
-        
+    private void updateResultsTableByDay(String dayLabel) {
+
         setTableColumns(new String[]{
-                "Student ID", "Course", "Day", "Slot"
+                "Day", "Slot", "Course", "Students Enrolled"
         });
 
         DefaultTableModel model = (DefaultTableModel) resultsTable.getModel();
+        model.setRowCount(0);
+
+        String[][] matrix = examPeriod.getExamMatrix();
+        if (matrix == null) return;
+
+        // "Day 3" → 3
+        int selectedDay = Integer.parseInt(dayLabel.replace("Day", "").trim()) - 1;
+
+        if (selectedDay < 0 || selectedDay >= matrix.length) return;
+
+        for (int slot = 0; slot < matrix[selectedDay].length; slot++) {
+
+            String courseCode = matrix[selectedDay][slot];
+            if (courseCode == null) continue;
+
+            String clean = courseCode.replace("[FIXED] ", "").trim();
+
+            Optional<Course> courseOpt = masterCourses.stream()
+                    .filter(c -> c.getCourseCode().equals(clean))
+                    .findFirst();
+
+            int studentCount = courseOpt
+                    .map(c -> c.getEnrolledStudents().size())
+                    .orElse(0);
+
+            model.addRow(new Object[]{
+                    "Day " + (selectedDay + 1),
+                    "Slot " + (slot + 1),
+                    clean,
+                    studentCount
+            });
+        }
+    }
+
+
+    private void updateResultsTableByCourse(String courseCode) {
+
+        setTableColumns(new String[]{
+                "Course", "Student ID", "Day", "Slot"
+        });
+
+        DefaultTableModel model = (DefaultTableModel) resultsTable.getModel();
+        model.setRowCount(0);
 
         String[][] matrix = examPeriod.getExamMatrix();
         if (matrix == null) return;
@@ -1023,8 +1151,8 @@ public class SchedulerGUI extends JFrame {
 
         for (Student student : course.getEnrolledStudents()) {
             model.addRow(new Object[]{
-                    student.getId(),
                     courseCode,
+                    student.getId(),
                     "Day " + examDay,
                     "Slot " + examSlot
             });
@@ -1048,13 +1176,181 @@ public class SchedulerGUI extends JFrame {
             }
         }
     }
-    private void updateResultsTableByStudent() {
+    private void updateResultsTableByStudent(String studentId) {
 
         setTableColumns(new String[]{
                 "Student ID", "Course", "Day", "Slot"
         });
 
         DefaultTableModel model = (DefaultTableModel) resultsTable.getModel();
+        model.setRowCount(0);
+
+        String[][] matrix = examPeriod.getExamMatrix();
+        if (matrix == null) return;
+
+        Student selectedStudent = students.stream()
+                .filter(s -> s.getId().equals(studentId))
+                .findFirst()
+                .orElse(null);
+
+        if (selectedStudent == null) return;
+
+        for (Course course : masterCourses) {
+
+            if (!course.getEnrolledStudents().contains(selectedStudent)) continue;
+
+            for (int day = 0; day < matrix.length; day++) {
+                for (int slot = 0; slot < matrix[day].length; slot++) {
+
+                    String code = matrix[day][slot];
+                    if (code == null) continue;
+
+                    String clean = code.replace("[FIXED] ", "").trim();
+
+                    if (clean.equals(course.getCourseCode())) {
+                        model.addRow(new Object[]{
+                                studentId,
+                                course.getCourseCode(),
+                                "Day " + (day + 1),
+                                "Slot " + (slot + 1)
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+
+    private void updateResultsTableByClassroom(String classroomName) {
+
+        setTableColumns(new String[]{
+                "Classroom", "Day", "Slot", "Course", "Utilization"
+        });
+
+        DefaultTableModel model = (DefaultTableModel) resultsTable.getModel();
+        model.setRowCount(0);
+
+        String[][] matrix = examPeriod.getExamMatrix();
+        if (matrix == null) return;
+
+        Classroom selectedRoom = classrooms.stream()
+                .filter(c -> c.getName().equals(classroomName))
+                .findFirst()
+                .orElse(null);
+
+        if (selectedRoom == null) return;
+
+        for (int day = 0; day < matrix.length; day++) {
+            for (int slot = 0; slot < matrix[day].length; slot++) {
+
+                String courseCode = matrix[day][slot];
+                if (courseCode == null) continue;
+
+                String clean = courseCode.replace("[FIXED] ", "").trim();
+
+                Optional<Course> courseOpt = masterCourses.stream()
+                        .filter(c -> c.getCourseCode().equals(clean))
+                        .findFirst();
+
+                int studentCount = courseOpt
+                        .map(c -> c.getEnrolledStudents().size())
+                        .orElse(0);
+
+                if (studentCount <= selectedRoom.getCapacity()) {
+                    model.addRow(new Object[]{
+                            selectedRoom.getName(),
+                            "Day " + (day + 1),
+                            "Slot " + (slot + 1),
+                            clean,
+                            studentCount + "/" + selectedRoom.getCapacity()
+                    });
+                }
+            }
+        }
+    }
+
+    private void updateResultsTableByAllDays() {
+
+        setTableColumns(new String[]{
+                "Day", "Slot", "Course", "Students Enrolled"
+        });
+
+        DefaultTableModel model = (DefaultTableModel) resultsTable.getModel();
+        model.setRowCount(0);
+
+        String[][] matrix = examPeriod.getExamMatrix();
+        if (matrix == null) return;
+
+        for (int day = 0; day < matrix.length; day++) {
+            for (int slot = 0; slot < matrix[day].length; slot++) {
+
+                String code = matrix[day][slot];
+                if (code == null) continue;
+
+                String clean = code.replace("[FIXED] ", "").trim();
+
+                Optional<Course> courseOpt = masterCourses.stream()
+                        .filter(c -> c.getCourseCode().equals(clean))
+                        .findFirst();
+
+                int studentCount = courseOpt
+                        .map(c -> c.getEnrolledStudents().size())
+                        .orElse(0);
+
+                model.addRow(new Object[]{
+                        "Day " + (day + 1),
+                        "Slot " + (slot + 1),
+                        clean,
+                        studentCount
+                });
+            }
+        }
+    }
+
+
+    private void updateResultsTableByAllCourses() {
+
+        setTableColumns(new String[]{
+                "Course", "Day", "Slot", "Students"
+        });
+
+        DefaultTableModel model = (DefaultTableModel) resultsTable.getModel();
+        model.setRowCount(0);
+
+        String[][] matrix = examPeriod.getExamMatrix();
+        if (matrix == null) return;
+
+        for (Course course : masterCourses) {
+            for (int day = 0; day < matrix.length; day++) {
+                for (int slot = 0; slot < matrix[day].length; slot++) {
+
+                    String code = matrix[day][slot];
+                    if (code == null) continue;
+
+                    if (code.replace("[FIXED] ", "").trim()
+                            .equals(course.getCourseCode())) {
+
+                        model.addRow(new Object[]{
+                                course.getCourseCode(),
+                                "Day " + (day + 1),
+                                "Slot " + (slot + 1),
+                                course.getEnrolledStudents().size()
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+
+    private void updateResultsTableByAllStudents() {
+
+        setTableColumns(new String[]{
+                "Student ID", "Course", "Day", "Slot"
+        });
+
+        DefaultTableModel model = (DefaultTableModel) resultsTable.getModel();
+        model.setRowCount(0);
 
         String[][] matrix = examPeriod.getExamMatrix();
         if (matrix == null) return;
@@ -1086,13 +1382,14 @@ public class SchedulerGUI extends JFrame {
         }
     }
 
-    private void updateResultsTableByClassroom() {
+    private void updateResultsTableByAllClassrooms() {
 
         setTableColumns(new String[]{
-                "Classroom", "Day", "Slot", "Course", "Utilization"
+                "Classroom", "Course", "Day", "Slot", "Students"
         });
 
         DefaultTableModel model = (DefaultTableModel) resultsTable.getModel();
+        model.setRowCount(0);
 
         String[][] matrix = examPeriod.getExamMatrix();
         if (matrix == null) return;
@@ -1101,32 +1398,35 @@ public class SchedulerGUI extends JFrame {
             for (int day = 0; day < matrix.length; day++) {
                 for (int slot = 0; slot < matrix[day].length; slot++) {
 
-                    String courseCode = matrix[day][slot];
-                    if (courseCode == null) continue;
+                    String code = matrix[day][slot];
+                    if (code == null) continue;
 
-                    String clean = courseCode.replace("[FIXED] ", "").trim();
+                    String clean = code.replace("[FIXED] ", "").trim();
 
                     Optional<Course> courseOpt = masterCourses.stream()
                             .filter(c -> c.getCourseCode().equals(clean))
                             .findFirst();
 
-                    int studentCount = courseOpt
+                    int count = courseOpt
                             .map(c -> c.getEnrolledStudents().size())
                             .orElse(0);
 
-                    if (studentCount <= room.getCapacity()) {
+                    if (count <= room.getCapacity()) {
                         model.addRow(new Object[]{
                                 room.getName(),
+                                clean,
                                 "Day " + (day + 1),
                                 "Slot " + (slot + 1),
-                                clean,
-                                studentCount + "/" + room.getCapacity()
+                                count
                         });
                     }
                 }
             }
         }
     }
+
+
+
     private void setTableColumns(String[] columns) {
         DefaultTableModel model = new DefaultTableModel(columns, 0);
         resultsTable.setModel(model);
