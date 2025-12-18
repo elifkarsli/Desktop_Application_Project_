@@ -51,7 +51,6 @@ public class SchedulerGUI extends JFrame {
     // Main Content Area (CardLayout for switching screens)
     private JPanel mainContentPanel;
     private CardLayout cardLayout;
-    private boolean isUpdatingFilter = false;
 
     // UI Components for updates
     private JLabel lblStudentCount, lblClassroomCount, lblCourseCount, lblAttendanceCount;
@@ -59,7 +58,14 @@ public class SchedulerGUI extends JFrame {
     private JSpinner spinDays, spinSlots;
     private JTextArea validationLogArea;
 
-    // --- DESIGN SYSTEM CONSTANTS ---
+    // Scheduler UI refs (for toggling)
+    private JLabel lblScheduledCount;
+    private JButton btnViewResults;
+    private JPanel schedulerStatusPanel;
+
+
+
+    // DESIGN SYSTEM CONSTANTS
     // "Linear" / "Vercel" inspired palette
     private final Color BG_CANVAS = new Color(248, 250, 252); // #F8FAFC
     private final Color BG_CARD = Color.WHITE;                // #FFFFFF
@@ -107,7 +113,7 @@ public class SchedulerGUI extends JFrame {
         mainContentPanel = new JPanel(cardLayout);
         mainContentPanel.setBackground(BG_CANVAS);
 
-        // --- Add Screens (Cards) ---
+        // Add Screens (Cards)
         mainContentPanel.add(createDashboardPanel(), "dashboard");
         mainContentPanel.add(createImportPanel(), "import");
         mainContentPanel.add(createValidatePanel(), "validate");
@@ -119,14 +125,13 @@ public class SchedulerGUI extends JFrame {
 
         // Initial Stat Update
         updateStats();
-
         refreshCourseSelector(courseSelector);
         updateResultsTable();
         updateStats();
 
     }
 
-    // --- Helper Methods to Build UI ---
+    // Helper Methods to Build UI
 
     private JPanel createSidebar() {
         JPanel sidebar = new JPanel();
@@ -213,7 +218,7 @@ public class SchedulerGUI extends JFrame {
         return topBar;
     }
 
-    // --- Screen 1: Dashboard Panel ---
+    // Screen 1: Dashboard Panel
     private JPanel createDashboardPanel() {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBackground(BG_CANVAS);
@@ -321,7 +326,7 @@ public class SchedulerGUI extends JFrame {
         lblAttendanceCount.setText(String.valueOf(enrolledCourses != null ? enrolledCourses.size() : 0));
     }
 
-    // --- Screen 2: Import Panel (Drag & Drop Zone Design) ---
+    // Screen 2: Import Panel (Drag & Drop Zone Design)
     private JPanel createImportPanel() {
         JPanel panel = new JPanel(new GridBagLayout());
         panel.setBackground(BG_CANVAS);
@@ -357,11 +362,11 @@ public class SchedulerGUI extends JFrame {
                 Parser<Classroom> roomParser = new CoreParsers.ClassroomParser();
                 classrooms = roomParser.parse(new File(txtRoom.getText()));
 
-                //  HANDLE RAW TYPE FOR ATTENDANCE PARSER ---
+                //  HANDLE RAW TYPE FOR ATTENDANCE PARSER
                 Parser attendanceParser = new CoreParsers.AttendanceParser();
                 List<?> rawAttendanceData = attendanceParser.parse(new File(txtAtt.getText()));
 
-                // HANDLE ATTENDANCE IMPORT (CRITICAL FIX) ---
+                // HANDLE ATTENDANCE IMPORT (CRITICAL FIX)
                 if (!rawAttendanceData.isEmpty() && rawAttendanceData.get(0) instanceof String[]) {
 
                     List<String[]> rows = (List<String[]>) rawAttendanceData;
@@ -545,7 +550,7 @@ public class SchedulerGUI extends JFrame {
         }
     }
 
-    // --- Screen 3: Validation Panel ---
+    // Screen 3: Validation Panel
     private JPanel createValidatePanel() {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBackground(BG_CANVAS);
@@ -597,8 +602,8 @@ public class SchedulerGUI extends JFrame {
         return panel;
     }
 
-    // --- Screen 4: Config Panel ---
-    // --- Screen 4: Config Panel (Version 1: Wide & Northwest Aligned) ---
+    // Screen 4: Config Panel
+    // Screen 4: Config Panel (Version 1: Wide & Northwest Aligned)
     private JPanel createConfigPanel() {
         JPanel panel = new JPanel(new GridBagLayout());
         panel.setBackground(BG_CANVAS);
@@ -608,7 +613,7 @@ public class SchedulerGUI extends JFrame {
         gbc.anchor = GridBagConstraints.NORTHWEST; // Align content to the top-left
         gbc.insets = new Insets(20, 40, 10, 40);
 
-        // ===== PAGE TITLE =====
+        // PAGE TITLE
         JLabel title = new JLabel("Exam Period Setup");
         title.setFont(FONT_HEADER);
         title.setForeground(TEXT_PRIMARY);
@@ -624,7 +629,7 @@ public class SchedulerGUI extends JFrame {
         gbc.insets = new Insets(0, 40, 30, 40);
         panel.add(subtitle, gbc);
 
-        // ===== CONFIG CARD (Wide Layout) =====
+        // CONFIG CARD (Wide Layout)
         JPanel card = new JPanel(new GridBagLayout());
         card.setBackground(Color.WHITE);
         card.setPreferredSize(new Dimension(720, 360)); // Wider card dimensions
@@ -638,7 +643,7 @@ public class SchedulerGUI extends JFrame {
         cgbc.insets = new Insets(14, 14, 14, 14);
         cgbc.fill = GridBagConstraints.HORIZONTAL;
 
-        // ---- Card Title ----
+        // Card Title
         JLabel cardTitle = new JLabel("Period Configuration");
         cardTitle.setFont(FONT_SUBHEADER);
         cardTitle.setForeground(TEXT_PRIMARY);
@@ -648,7 +653,7 @@ public class SchedulerGUI extends JFrame {
         cgbc.gridwidth = 2;
         card.add(cardTitle, cgbc);
 
-        // ---- Days Input ----
+        // Days Input
         JLabel lblDays = new JLabel("Total Number of Exam Days");
         lblDays.setFont(FONT_BODY);
 
@@ -663,7 +668,7 @@ public class SchedulerGUI extends JFrame {
         cgbc.gridx = 1;
         card.add(spinDays, cgbc);
 
-        // ---- Slots Input ----
+        // Slots Input
         JLabel lblSlots = new JLabel("Number of Slots per Day");
         lblSlots.setFont(FONT_BODY);
 
@@ -678,7 +683,7 @@ public class SchedulerGUI extends JFrame {
         cgbc.gridx = 1;
         card.add(spinSlots, cgbc);
 
-        // ---- Action Button ----
+        // Action Button
         JButton btnSave = new JButton("Generate Grid Preview");
         btnSave.setBackground(ACCENT_BLUE);
         btnSave.setForeground(Color.WHITE);
@@ -705,7 +710,7 @@ public class SchedulerGUI extends JFrame {
         cgbc.insets = new Insets(30, 0, 0, 0);
         card.add(btnSave, cgbc);
 
-        // ===== ADD CARD TO PANEL =====
+        // ADD CARD TO PANEL
         gbc.gridy = 2;
         gbc.insets = new Insets(10, 40, 0, 40);
         panel.add(card, gbc);
@@ -717,144 +722,213 @@ public class SchedulerGUI extends JFrame {
         return wrapper;
     }
 
-    // --- Screen 5: Scheduler Panel (Terminal Design) ---
+    // Screen 5: Scheduler Panel
     private JPanel createSchedulerPanel() {
-        JPanel panel = new JPanel(new GridBagLayout());
-        panel.setBackground(BG_CANVAS);
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(20, 20, 20, 20);
 
-        JLabel title = new JLabel("Scheduler Execution");
+        JPanel root = new JPanel(new BorderLayout());
+        root.setBackground(BG_CANVAS);
+        root.setBorder(new EmptyBorder(30, 40, 30, 40));
+
+        // HEADER
+        JLabel title = new JLabel("Scheduler");
         title.setFont(FONT_HEADER);
         title.setForeground(TEXT_PRIMARY);
-        gbc.gridx = 0; gbc.gridy = 0; gbc.anchor = GridBagConstraints.WEST;
-        panel.add(title, gbc);
 
-        // Terminal-like Log Area
-        JTextArea logArea = new JTextArea(20, 60);
-        logArea.setEditable(false);
-        logArea.setBackground(new Color(15, 23, 42)); // Very Dark Slate
-        logArea.setForeground(new Color(74, 222, 128)); // Terminal Green
-        logArea.setFont(new Font("Monospaced", Font.PLAIN, 14));
-        logArea.setText("> Waiting for command...\n");
-        logArea.setBorder(new EmptyBorder(15, 15, 15, 15));
+        JLabel subtitle = new JLabel("Generate and manage the exam schedule");
+        subtitle.setFont(FONT_BODY);
+        subtitle.setForeground(TEXT_SECONDARY);
 
-        JScrollPane scroll = new JScrollPane(logArea);
-        scroll.setBorder(new LineBorder(BORDER_COLOR));
-        gbc.gridy = 1;
-        panel.add(scroll, gbc);
+        JPanel header = new JPanel();
+        header.setLayout(new BoxLayout(header, BoxLayout.Y_AXIS));
+        header.setBackground(BG_CANVAS);
+        header.add(title);
+        header.add(Box.createVerticalStrut(6));
+        header.add(subtitle);
 
-        JButton btnRun = new JButton("▶ Start Automatic Scheduling");
-        stylePrimaryButton(btnRun);
-        btnRun.setFont(new Font("SansSerif", Font.BOLD, 16));
-        btnRun.setPreferredSize(new Dimension(300, 50));
+        root.add(header, BorderLayout.NORTH);
 
-        btnRun.addActionListener(e -> {
-            logArea.setText("> Initializing Scheduler...\n");
+        // CONTENT
+        JPanel center = new JPanel();
+        center.setLayout(new BoxLayout(center, BoxLayout.Y_AXIS));
+        center.setBackground(BG_CANVAS);
+        center.setBorder(new EmptyBorder(20, 0, 0, 0));
 
-            int days = (Integer) spinDays.getValue();
-            int slots = (Integer) spinSlots.getValue();
-            this.examPeriod = new ExamPeriod(days, slots);
-            logArea.append("> Exam Period Set: " + days + " days, " + slots + " slots.\n");
+        // CONTROL CARD
+        JPanel controlCard = new JPanel(new BorderLayout());
+        controlCard.setBackground(BG_CARD);
+        controlCard.setBorder(BorderFactory.createCompoundBorder(
+                new LineBorder(BORDER_COLOR, 1, true),
+                new EmptyBorder(10, 16, 10, 16)
 
-            FixedExamService fixedService = new FixedExamService();
-            int fixedCount = 0;
-            for (FixedExam fx : fixedExams) {
-                try {
-                    fixedService.addFixedExam(fx);
-                    if (fx.getDay() <= days && fx.getSlot() <= slots) {
-                        examPeriod.assignFixedExam(fx.getDay() - 1, fx.getSlot() - 1, fx.getCourseCode());
-                        fixedCount++;
-                    } else {
-                         logArea.append("! WARNING: Fixed exam " + fx.getCourseCode() + " out of bounds!\n");
-                    }
-                } catch (Exception ex) {
-                     logArea.append("! Conflict: " + ex.getMessage() + "\n");
-                }
-            }
-            logArea.append("> Assigned " + fixedCount + " fixed exams.\n");
+        ));
+        controlCard.setMaximumSize(new Dimension(Integer.MAX_VALUE, 60));
+        controlCard.setPreferredSize(new Dimension(0, 60));
 
-            ExamSchedulerService schedulerService = new ExamSchedulerService();
-            List<Course> unplaced = schedulerService.scheduleRegularExams(enrolledCourses, classrooms, examPeriod);
 
-            if (unplaced.isEmpty()) {
-                logArea.append("> SUCCESS: All exams scheduled successfully!\n");
-                logArea.append("> Process finished with code 0.");
-                JOptionPane.showMessageDialog(this, "Scheduling Complete!");
-                cardLayout.show(mainContentPanel, "results");
-                updateResultsTable();
-            } else {
-                logArea.append("> FAILURE: Could not place " + unplaced.size() + " courses.\n");
-                logArea.append("> Triggering Suggestion Engine...\n");
+        JButton btnGenerate = new JButton("▶ Generate Schedule");
+        stylePrimaryButton(btnGenerate);
 
-                // --- CAPTURE SUGGESTION ENGINE OUTPUT ---
-                PrintStream originalOut = System.out;
-                ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                PrintStream captureOut = new PrintStream(baos);
+        lblScheduledCount = new JLabel("Scheduled: 0 exams");
+        lblScheduledCount.setFont(FONT_BODY);
+        lblScheduledCount.setForeground(TEXT_SECONDARY);
 
-                try {
-                    System.setOut(captureOut);
-                    SuggestionEngine suggestionEngine = new SuggestionEngine();
-                    suggestionEngine.analyzeAndSuggest(enrolledCourses, classrooms, fixedExams, days, slots);
-                    System.out.flush();
-                } finally {
-                    System.setOut(originalOut);
-                }
+        controlCard.add(btnGenerate, BorderLayout.WEST);
+        controlCard.add(lblScheduledCount, BorderLayout.EAST);
 
-                logArea.append(baos.toString());
+        center.add(controlCard);
+        center.add(Box.createVerticalStrut(20));
 
-                logArea.append("> Check above for detailed suggestions.\n");
-                JOptionPane.showMessageDialog(this, "Scheduling Failed. Check terminal for details.", "Warning", JOptionPane.WARNING_MESSAGE);
-            }
+        // STATUS AREA
+        schedulerStatusPanel = new JPanel();
+        schedulerStatusPanel.setLayout(new BoxLayout(schedulerStatusPanel, BoxLayout.Y_AXIS));
+        schedulerStatusPanel.setBackground(BG_CANVAS);
+
+        JScrollPane statusScroll = new JScrollPane(schedulerStatusPanel);
+        statusScroll.getVerticalScrollBar().setUnitIncrement(24);
+        statusScroll.setBorder(new LineBorder(BORDER_COLOR, 1, true));
+        statusScroll.setPreferredSize(new Dimension(0, 420));
+
+        center.add(statusScroll);
+
+        // VIEW RESULTS BUTTON
+        btnViewResults = new JButton("View Results");
+        stylePrimaryButton(btnViewResults);
+        btnViewResults.setVisible(false);
+
+        btnViewResults.addActionListener(e -> {
+            cardLayout.show(mainContentPanel, "results");
+            updateResultsTable();
         });
 
-        gbc.gridy = 2;
-        panel.add(btnRun, gbc);
+        center.add(Box.createVerticalStrut(16));
+        center.add(btnViewResults);
 
-        return panel;
+        root.add(center, BorderLayout.CENTER);
+
+        // ACTION
+        btnGenerate.addActionListener(e -> {
+            schedulerStatusPanel.removeAll();
+            btnViewResults.setVisible(false);
+            runSchedulingAndLog();
+        });
+
+        return root;
     }
-    private void refreshTableAccordingToCurrentState(String view) {
+    private void addStatusItem(String title, String message, Color color) {
 
-        String selected = (String) courseSelector.getSelectedItem();
+        JPanel card = new JPanel(new BorderLayout());
+        card.setBackground(BG_CARD);
+        card.setBorder(BorderFactory.createCompoundBorder(
+                new LineBorder(color, 1, true),
+                new EmptyBorder(12, 16, 12, 16)
+        ));
 
-        if (selected == null || selected.startsWith("Select")) {
-            switch (view) {
-                case "View by Day":
-                    updateResultsTableByAllDays();
-                    return;
-                case "View by Course":
-                    updateResultsTableByAllCourses();
-                    return;
-                case "View by Student":
-                    updateResultsTableByAllStudents();
-                    return;
-                case "View by Classroom":
-                    updateResultsTableByAllClassrooms();
-                    return;
-                default:
-                    updateResultsTable();
-                    return;
+        JLabel lblTitle = new JLabel(title);
+        lblTitle.setFont(new Font("SansSerif", Font.BOLD, 14));
+        lblTitle.setForeground(color);
+
+        JLabel lblMsg = new JLabel("<html>" + message + "</html>");
+        lblMsg.setFont(FONT_BODY);
+        lblMsg.setForeground(TEXT_SECONDARY);
+
+        card.add(lblTitle, BorderLayout.NORTH);
+        card.add(lblMsg, BorderLayout.CENTER);
+
+        schedulerStatusPanel.add(card);
+        schedulerStatusPanel.add(Box.createVerticalStrut(10));
+
+        schedulerStatusPanel.revalidate();
+        schedulerStatusPanel.repaint();
+    }
+    private void runSchedulingAndLog() {
+
+        addStatusItem("Scheduler Started",
+                "Scheduling engine initialized successfully.",
+                ACCENT_BLUE);
+
+        int days = (Integer) spinDays.getValue();
+        int slots = (Integer) spinSlots.getValue();
+        this.examPeriod = new ExamPeriod(days, slots);
+
+        addStatusItem("Exam Period Configuration",
+                "Days: <b>" + days + "</b><br>Slots per day: <b>" + slots + "</b>",
+                ACCENT_BLUE);
+
+        // FIXED EXAMS
+        FixedExamService fixedService = new FixedExamService();
+        int fixedCount = 0;
+
+        for (FixedExam fx : fixedExams) {
+            try {
+                fixedService.addFixedExam(fx);
+                if (fx.getDay() <= days && fx.getSlot() <= slots) {
+                    examPeriod.assignFixedExam(
+                            fx.getDay() - 1,
+                            fx.getSlot() - 1,
+                            fx.getCourseCode()
+                    );
+                    fixedCount++;
+                }
+            } catch (Exception ignored) {}
+        }
+
+        addStatusItem("Fixed Exams",
+                "Assigned fixed exams: <b>" + fixedCount + "</b>",
+                ACCENT_BLUE);
+
+        // RUN SCHEDULER
+        ExamSchedulerService schedulerService = new ExamSchedulerService();
+        List<Course> unplaced =
+                schedulerService.scheduleRegularExams(enrolledCourses, classrooms, examPeriod);
+
+        if (unplaced.isEmpty()) {
+
+            lblScheduledCount.setText("Scheduled: " + countScheduledExams() + " exams");
+
+            addStatusItem("Scheduling Completed",
+                    "✔ All exams scheduled successfully<br>✔ No conflicts detected",
+                    SUCCESS_GREEN);
+
+            btnViewResults.setVisible(true);
+
+        } else {
+
+            addStatusItem("Scheduling Failed",
+                    "❌ Could not place <b>" + unplaced.size() + "</b> courses",
+                    ERROR_RED);
+
+            // Capture suggestion engine output
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            PrintStream original = System.out;
+            System.setOut(new PrintStream(baos));
+
+            try {
+                new SuggestionEngine().analyzeAndSuggest(
+                        enrolledCourses, classrooms, fixedExams, days, slots);
+            } finally {
+                System.setOut(original);
+            }
+
+            addStatusItem("Suggestions",
+                    "<pre style='font-family:monospace'>" + baos.toString() + "</pre>",
+                    new Color(234, 179, 8)); // amber
+        }
+    }
+
+    private int countScheduledExams() {
+        if (examPeriod == null || examPeriod.getExamMatrix() == null) return 0;
+
+        int count = 0;
+        String[][] m = examPeriod.getExamMatrix();
+        for (int d = 0; d < m.length; d++) {
+            for (int s = 0; s < m[d].length; s++) {
+                if (m[d][s] != null) count++;
             }
         }
-
-        switch (view) {
-            case "View by Day":
-                updateResultsTableByDay(selected);
-                break;
-            case "View by Course":
-                updateResultsTableByCourse(selected);
-                break;
-            case "View by Student":
-                updateResultsTableByStudent(selected);
-                break;
-            case "View by Classroom":
-                updateResultsTableByClassroom(selected);
-                break;
-        }
+        return count;
     }
 
-
-    // --- Screen 6: Results Panel (Modern Data Table) ---
+    // Screen 6: Results Panel
     private JPanel createResultsPanel() {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBackground(BG_CANVAS);
@@ -868,7 +942,7 @@ public class SchedulerGUI extends JFrame {
         title.setFont(FONT_HEADER);
         title.setForeground(TEXT_PRIMARY);
 
-        // ---------- ACTIONS ----------
+        //ACTIONS
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         actions.setBackground(BG_CANVAS);
 
@@ -1031,7 +1105,7 @@ public class SchedulerGUI extends JFrame {
         toolbar.add(actions, BorderLayout.EAST);
         panel.add(toolbar, BorderLayout.NORTH);
 
-        // ---------- TABLE ----------
+        // TABLE
         String[] columnNames = {"Day", "Slot", "Course Code", "Students Enrolled"};
         DefaultTableModel model = new DefaultTableModel(columnNames, 0);
         resultsTable = new JTable(model);
@@ -1114,7 +1188,7 @@ public class SchedulerGUI extends JFrame {
         btn.setForeground(Color.WHITE);
         btn.setFont(new Font("SansSerif", Font.BOLD, 14));
         btn.setFocusPainted(false);
-        btn.setBorder(new EmptyBorder(10, 20, 10, 20));
+        btn.setBorder(new EmptyBorder(8, 18, 8, 18));
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
     }
     private void updateResultsTableByDay(String dayLabel) {
@@ -1208,13 +1282,6 @@ public class SchedulerGUI extends JFrame {
         }
     }
 
-    private int getStudentCount(String courseCode) {
-        return masterCourses.stream()
-                .filter(c -> c.getCourseCode().equals(courseCode))
-                .map(c -> c.getEnrolledStudents().size())
-                .findFirst()
-                .orElse(0);
-    }
     private void refreshCourseSelector(JComboBox<String> courseSelector) {
         courseSelector.removeAllItems();
         courseSelector.addItem("Select Course");
