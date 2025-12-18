@@ -14,10 +14,14 @@ import javax.swing.*;
 import javax.swing.border.Border;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
+import javax.swing.border.MatteBorder;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
+import javax.swing.table.TableRowSorter;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -47,7 +51,7 @@ public class SchedulerGUI extends JFrame {
     private List<FixedExam> fixedExams = new ArrayList<>();
 
     // Navigation Buttons
-    private JButton btnDashboard, btnImport, btnValidate, btnConfig, btnScheduler, btnResults;
+    private JButton btnDashboard, btnImport, btnValidate, btnConfig, btnScheduler, btnResults, btnTimetable;
 
     // Main Content Area (CardLayout for switching screens)
     private JPanel mainContentPanel;
@@ -56,8 +60,10 @@ public class SchedulerGUI extends JFrame {
     // UI Components for updates
     private JLabel lblStudentCount, lblClassroomCount, lblCourseCount, lblAttendanceCount;
     private JTable resultsTable;
+    private JTable visualTimetable; // Visual Timetable Table
     private JSpinner spinDays, spinSlots;
-    private JTextArea validationLogArea;
+    private JTextPane validationLogArea; // Changed from JTextArea to JTextPane for HTML
+    private JTextField txtSearch; // Search Bar
 
     // Scheduler UI refs (for toggling)
     private JLabel lblScheduledCount;
@@ -136,6 +142,7 @@ public class SchedulerGUI extends JFrame {
         mainContentPanel.add(createConfigPanel(), "config");
         mainContentPanel.add(createSchedulerPanel(), "scheduler");
         mainContentPanel.add(createResultsPanel(), "results");
+        mainContentPanel.add(createTimetablePanel(), "timetable"); // Added Timetable Card
 
         add(mainContentPanel, BorderLayout.CENTER);
 
@@ -143,6 +150,7 @@ public class SchedulerGUI extends JFrame {
         updateStats();
         refreshCourseSelector(courseSelector);
         updateResultsTable();
+        updateVisualTimetable();
         updateStats();
 
         setActiveButton(btnDashboard);
@@ -169,6 +177,7 @@ public class SchedulerGUI extends JFrame {
         btnConfig = createMenuButton("Exam Period");
         btnScheduler = createMenuButton("Run Scheduler");
         btnResults = createMenuButton("View Results");
+        btnTimetable = createMenuButton("Timetable Grid"); // New Button
 
         btnDashboard.addActionListener(e -> {
             setActiveButton(btnDashboard);
@@ -199,12 +208,19 @@ public class SchedulerGUI extends JFrame {
             cardLayout.show(mainContentPanel, "results");
         });
 
+        btnTimetable.addActionListener(e -> {
+            setActiveButton(btnTimetable);
+            cardLayout.show(mainContentPanel, "timetable");
+            updateVisualTimetable();
+        });
+
         sidebar.add(btnDashboard);
         sidebar.add(btnImport);
         sidebar.add(btnValidate);
         sidebar.add(btnConfig);
         sidebar.add(btnScheduler);
         sidebar.add(btnResults);
+        sidebar.add(btnTimetable); // Add to sidebar
 
         // Spacer to push content up
         sidebar.add(Box.createGlue());
@@ -244,18 +260,149 @@ public class SchedulerGUI extends JFrame {
         topBar.setBackground(BG_CARD);
         topBar.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER_COLOR));
 
-        JLabel lblHeader = new JLabel("   Exam Management Console");
+        JLabel lblHeader = new JLabel("    Exam Management Console");
         lblHeader.setFont(new Font("SansSerif", Font.BOLD, 16));
         lblHeader.setForeground(TEXT_PRIMARY);
 
-        JLabel lblToast = new JLabel("System Ready   ");
+        // Right side container for Help + Status
+        JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 20, 18));
+        rightPanel.setBackground(BG_CARD);
+
+        // HELP BUTTON
+        JButton btnHelp = new JButton("Need Help?");
+        btnHelp.setFont(new Font("SansSerif", Font.BOLD, 12));
+        btnHelp.setBackground(new Color(241, 245, 249));
+        btnHelp.setForeground(ACCENT_BLUE);
+        btnHelp.setFocusPainted(false);
+        btnHelp.setBorder(new LineBorder(BORDER_COLOR, 1, true));
+        btnHelp.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnHelp.setPreferredSize(new Dimension(110, 32));
+        
+        btnHelp.addActionListener(e -> showHelpDialog());
+
+        JLabel lblToast = new JLabel("System Ready");
         lblToast.setForeground(SUCCESS_GREEN);
         lblToast.setFont(new Font("SansSerif", Font.BOLD, 12));
         lblToast.setIcon(UIManager.getIcon("FileView.floppyDriveIcon"));
 
+        rightPanel.add(btnHelp);
+        rightPanel.add(lblToast);
+
         topBar.add(lblHeader, BorderLayout.WEST);
-        topBar.add(lblToast, BorderLayout.EAST);
+        topBar.add(rightPanel, BorderLayout.EAST);
         return topBar;
+    }
+
+    private void showHelpDialog() {
+        new TutorialDialog(this).setVisible(true);
+    }
+
+    // Inner class for the paginated help dialog
+    private class TutorialDialog extends JDialog {
+        private int currentIndex = 0;
+        private final String[][] tutorials = {
+            {"Dashboard", "<html><b>1. Dashboard Overview</b><br><br>The Dashboard provides a high-level summary of your system.<br><br>• <b>Stats:</b> View total counts of loaded Students, Classrooms, and Courses.<br>• <b>Activity Feed:</b> Monitor recent system logs and status updates.<br>• <b>Status:</b> Ensure the system is ready before proceeding.</html>"},
+            {"Import Data", "<html><b>2. Import Data</b><br><br>Load your external data files into the system.<br><br>• <b>Drag & Drop:</b> distinct zones for Students, Courses, Classrooms, etc.<br>• <b>CSV Support:</b> Only .csv files are supported.<br>• <b>Action:</b> Click 'Load & Parse' to process the files into memory.</html>"},
+            {"Validate Data", "<html><b>3. Validate Data</b><br><br>Check for data consistency and errors.<br><br>• <b>Integrity Check:</b> Scans for orphan records (e.g., student enrolled in non-existent course).<br>• <b>Capacity Check:</b> Verifies if classrooms fit enrolled students.<br>• <b>Feedback:</b> Look for Green (Success) or Red (Error) logs.</html>"},
+            {"Exam Period", "<html><b>4. Exam Period Configuration</b><br><br>Define the temporal structure of your exams.<br><br>• <b>Days:</b> Total number of days available for exams.<br>• <b>Slots:</b> Number of time slots per day.<br>• <b>Setup:</b> You must configure this before running the scheduler.</html>"},
+            {"Run Scheduler", "<html><b>5. Run Scheduler</b><br><br>The core algorithm engine.<br><br>• <b>Generate:</b> Attempts to assign every course to a time slot and room.<br>• <b>Fixed Exams:</b> Respects pre-assigned fixed exams.<br>• <b>Conflict Handling:</b> If scheduling fails, the system provides suggestions.</html>"},
+            {"View Results", "<html><b>6. View Results</b><br><br>Explore the generated schedule in detail.<br><br>• <b>Filters:</b> View by Day, Student, Course, or Classroom.<br>• <b>Search:</b> You can only search for one thing in the search bar and combine them with the tags.<br>• <b>Export:</b> Save the final schedule as a CSV file.</html>"},
+            {"Timetable", "<html><b>7. Timetable</b><br><br>A graphical grid representation.<br><br>• <b>Structure:</b> Rows are Time Slots (09:00 start), Columns are Days.<br>• <b>Usage:</b> Great for visually checking the distribution of exams.<br>• <b>Read-Only:</b> This view is updated automatically.</html>"}
+        };
+
+        private JLabel lblContent;
+        private JLabel lblStep;
+        private JButton btnPrev;
+        private JButton btnNext;
+
+        public TutorialDialog(Frame owner) {
+            super(owner, "Application Tutorial", true);
+            setSize(600, 400);
+            setLocationRelativeTo(owner);
+            setLayout(new BorderLayout());
+            setResizable(false);
+
+            // Header
+            JPanel header = new JPanel(new BorderLayout());
+            header.setBackground(new Color(248, 250, 252));
+            header.setBorder(new EmptyBorder(20, 30, 20, 30));
+            
+            JLabel lblTitle = new JLabel("User Guide");
+            lblTitle.setFont(new Font("SansSerif", Font.BOLD, 20));
+            lblTitle.setForeground(new Color(15, 23, 42));
+            header.add(lblTitle, BorderLayout.WEST);
+            
+            lblStep = new JLabel("Step 1 of " + tutorials.length);
+            lblStep.setFont(new Font("SansSerif", Font.BOLD, 12));
+            lblStep.setForeground(new Color(100, 116, 139));
+            header.add(lblStep, BorderLayout.EAST);
+
+            add(header, BorderLayout.NORTH);
+
+            // Content
+            lblContent = new JLabel();
+            lblContent.setFont(new Font("SansSerif", Font.PLAIN, 14));
+            lblContent.setVerticalAlignment(SwingConstants.TOP);
+            lblContent.setBorder(new EmptyBorder(20, 40, 20, 40));
+            add(lblContent, BorderLayout.CENTER);
+
+            // Footer / Controls
+            JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 15));
+            footer.setBackground(Color.WHITE);
+            footer.setBorder(new MatteBorder(1, 0, 0, 0, new Color(226, 232, 240)));
+
+            btnPrev = new JButton("Previous");
+            styleButton(btnPrev, false);
+            btnPrev.addActionListener(e -> navigate(-1));
+
+            btnNext = new JButton("Next");
+            styleButton(btnNext, true);
+            btnNext.addActionListener(e -> navigate(1));
+
+            footer.add(btnPrev);
+            footer.add(btnNext);
+            add(footer, BorderLayout.SOUTH);
+
+            updateView();
+        }
+
+        private void navigate(int direction) {
+            currentIndex += direction;
+            if (currentIndex < 0) currentIndex = 0;
+            if (currentIndex >= tutorials.length) {
+                dispose(); // Finish
+                return;
+            }
+            updateView();
+        }
+
+        private void updateView() {
+            lblContent.setText(tutorials[currentIndex][1]);
+            lblStep.setText("Step " + (currentIndex + 1) + " of " + tutorials.length);
+            
+            btnPrev.setEnabled(currentIndex > 0);
+            if (currentIndex == tutorials.length - 1) {
+                btnNext.setText("Finish");
+                btnNext.setBackground(new Color(34, 197, 94)); // Green
+            } else {
+                btnNext.setText("Next");
+                btnNext.setBackground(new Color(59, 130, 246)); // Blue
+            }
+        }
+
+        private void styleButton(JButton btn, boolean primary) {
+            btn.setFont(new Font("SansSerif", Font.BOLD, 13));
+            btn.setFocusPainted(false);
+            btn.setBorder(new EmptyBorder(10, 20, 10, 20));
+            btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+            if (primary) {
+                btn.setBackground(new Color(59, 130, 246));
+                btn.setForeground(Color.WHITE);
+            } else {
+                btn.setBackground(new Color(241, 245, 249));
+                btn.setForeground(new Color(15, 23, 42));
+            }
+        }
     }
 
     // Screen 1: Dashboard Panel
@@ -270,7 +417,7 @@ public class SchedulerGUI extends JFrame {
         JLabel lblWelcome = new JLabel("Dashboard Overview");
         lblWelcome.setFont(FONT_HEADER);
         lblWelcome.setForeground(TEXT_PRIMARY);
-        JLabel lblSub = new JLabel("Welcome back, Administrator. Here is what's happening today.");
+        JLabel lblSub = new JLabel("Welcome, here is the current system status.");
         lblSub.setFont(FONT_BODY);
         lblSub.setForeground(TEXT_SECONDARY);
         headerPanel.add(lblWelcome, BorderLayout.NORTH);
@@ -287,10 +434,10 @@ public class SchedulerGUI extends JFrame {
         lblCourseCount = createStatLabel();
         lblAttendanceCount = createStatLabel();
 
-        statsPanel.add(createMetricCard("Students", lblStudentCount, "+12% vs last term"));
-        statsPanel.add(createMetricCard("Classrooms", lblClassroomCount, "No changes"));
-        statsPanel.add(createMetricCard("Courses", lblCourseCount, "+5 New Added"));
-        statsPanel.add(createMetricCard("Records", lblAttendanceCount, "Updated Just Now"));
+        statsPanel.add(createMetricCard("Students", lblStudentCount, "Loaded"));
+        statsPanel.add(createMetricCard("Classrooms", lblClassroomCount, "Available"));
+        statsPanel.add(createMetricCard("Courses", lblCourseCount, "Added"));
+        statsPanel.add(createMetricCard("Records", lblAttendanceCount, "Enrollments"));
 
         // Activity Feed
         JPanel activityPanel = new JPanel(new BorderLayout());
@@ -305,7 +452,7 @@ public class SchedulerGUI extends JFrame {
         lblActivityTitle.setForeground(TEXT_PRIMARY);
 
         JTextArea activityList = new JTextArea();
-        activityList.setText("• System initialized successfully.\n• Waiting for data import...\n• No conflicts detected in previous run.");
+        activityList.setText("• System initialized successfully.\n• Waiting for data import...\n• ");
         activityList.setFont(FONT_BODY);
         activityList.setForeground(TEXT_SECONDARY);
         activityList.setEditable(false);
@@ -602,9 +749,10 @@ public class SchedulerGUI extends JFrame {
         title.setBorder(new EmptyBorder(0, 0, 20, 0));
         panel.add(title, BorderLayout.NORTH);
 
-        validationLogArea = new JTextArea();
+        // --- MODERN UI CHANGE: Use JTextPane for HTML ---
+        validationLogArea = new JTextPane();
         validationLogArea.setEditable(false);
-        validationLogArea.setFont(FONT_MONO);
+        validationLogArea.setContentType("text/html");
         validationLogArea.setBackground(BG_CARD);
         validationLogArea.setBorder(new EmptyBorder(10, 10, 10, 10));
 
@@ -619,18 +767,23 @@ public class SchedulerGUI extends JFrame {
             DataValidator validator = new DataValidator();
             List<String> errors = validator.validate(students, classrooms, masterCourses, enrolledCourses);
 
-            validationLogArea.setText("");
+            StringBuilder html = new StringBuilder();
+            html.append("<html><body style='font-family: SansSerif; font-size: 13px;'>");
+
             if (errors.isEmpty()) {
-                validationLogArea.append("✔ SUCCESS: All data is valid.\n");
-                validationLogArea.append("✔ Referential integrity checks passed.\n");
-                validationLogArea.setForeground(SUCCESS_GREEN);
+                html.append("<div style='color: #22c55e; font-weight: bold; font-size: 14px;'>✔ Validation Successful</div>");
+                html.append("<div style='color: #1e293b; margin-top: 8px;'>All data integrity checks passed. You are ready to schedule.</div>");
             } else {
-                validationLogArea.append("⚠ WARNING: Found " + errors.size() + " issues:\n");
+                html.append("<div style='color: #ef4444; font-weight: bold; font-size: 14px;'>⚠ Validation Failed</div>");
+                html.append("<div style='color: #64748b; margin-top: 8px;'>Found ").append(errors.size()).append(" issues that need resolution:</div>");
+                html.append("<ul style='margin-left: 20px; margin-top: 8px; color: #334155;'>");
                 for (String err : errors) {
-                    validationLogArea.append("✖ " + err + "\n");
+                    html.append("<li>").append(err).append("</li>");
                 }
-                validationLogArea.setForeground(ERROR_RED);
+                html.append("</ul>");
             }
+            html.append("</body></html>");
+            validationLogArea.setText(html.toString());
         });
 
         JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
@@ -704,6 +857,7 @@ public class SchedulerGUI extends JFrame {
         spinDays = new JSpinner(new SpinnerNumberModel(5, 1, 30, 1));
         spinDays.setPreferredSize(new Dimension(160, 40));
         spinDays.setFont(FONT_BODY);
+        ((JSpinner.DefaultEditor) spinDays.getEditor()).getTextField().setEditable(false);
 
         cgbc.gridx = 1;
         card.add(spinDays, cgbc);
@@ -716,9 +870,21 @@ public class SchedulerGUI extends JFrame {
         cgbc.gridy = 2;
         card.add(lblSlots, cgbc);
 
-        spinSlots = new JSpinner(new SpinnerNumberModel(4, 1, 10, 1));
+        spinSlots = new JSpinner(new SpinnerNumberModel(4, -100, 100, 1));
         spinSlots.setPreferredSize(new Dimension(160, 40));
         spinSlots.setFont(FONT_BODY);
+        ((JSpinner.DefaultEditor) spinSlots.getEditor()).getTextField().setEditable(false);
+        
+        spinSlots.addChangeListener(e -> {
+            int val = (Integer) spinSlots.getValue();
+            if (val > 6) {
+                spinSlots.setValue(6);
+                JOptionPane.showMessageDialog(this, "There can be maximum of 6 slots in a day", "Input Error", JOptionPane.ERROR_MESSAGE);
+            } else if (val <=  0) {
+                spinSlots.setValue(1);
+                JOptionPane.showMessageDialog(this, "Slot number cannot be zero or negative", "Input Error", JOptionPane.ERROR_MESSAGE);
+            }
+        });
 
         cgbc.gridx = 1;
         card.add(spinSlots, cgbc);
@@ -968,7 +1134,7 @@ public class SchedulerGUI extends JFrame {
         return count;
     }
 
-    // Screen 6: Results Panel
+    // Screen 6: Results Panel (Reverted to just the list)
     private JPanel createResultsPanel() {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBackground(BG_CANVAS);
@@ -1135,8 +1301,19 @@ public class SchedulerGUI extends JFrame {
             }
         });
 
+        // SEARCH BAR
+        txtSearch = new JTextField(15);
+        txtSearch.setToolTipText("Filter results...");
+        
+        txtSearch.getDocument().addDocumentListener(new DocumentListener() {
+            public void insertUpdate(DocumentEvent e) { applyCurrentSearchFilter(); }
+            public void removeUpdate(DocumentEvent e) { applyCurrentSearchFilter(); }
+            public void changedUpdate(DocumentEvent e) { applyCurrentSearchFilter(); }
+        });
 
         // ADD ORDER
+        actions.add(new JLabel("Search:"));
+        actions.add(txtSearch);
         actions.add(viewSelector);
         actions.add(courseSelector);
         actions.add(btnExport);
@@ -1145,7 +1322,7 @@ public class SchedulerGUI extends JFrame {
         toolbar.add(actions, BorderLayout.EAST);
         panel.add(toolbar, BorderLayout.NORTH);
 
-        // TABLE
+        // --- TABLE: DETAILED LIST ---
         String[] columnNames = {"Day", "Slot", "Course Code", "Students Enrolled"};
         DefaultTableModel model = new DefaultTableModel(columnNames, 0);
         resultsTable = new JTable(model);
@@ -1184,6 +1361,61 @@ public class SchedulerGUI extends JFrame {
         return panel;
     }
 
+    private void applyCurrentSearchFilter() {
+        if (resultsTable.getRowSorter() instanceof TableRowSorter) {
+            TableRowSorter<DefaultTableModel> sorter = (TableRowSorter<DefaultTableModel>) resultsTable.getRowSorter();
+            String text = txtSearch.getText();
+            if (text.trim().length() == 0) {
+                sorter.setRowFilter(null);
+            } else {
+                try {
+                    sorter.setRowFilter(RowFilter.regexFilter("(?i)" + text));
+                } catch (Exception e) {
+                    // ignore invalid regex
+                }
+            }
+        }
+    }
+
+    // Screen 7: Timetable Panel (NEW SEPARATE SCREEN)
+    private JPanel createTimetablePanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(BG_CANVAS);
+        panel.setBorder(new EmptyBorder(30, 30, 30, 30));
+
+        // Header
+        JPanel headerPanel = new JPanel(new BorderLayout());
+        headerPanel.setBackground(BG_CANVAS);
+        headerPanel.setBorder(new EmptyBorder(0, 0, 20, 0));
+
+        JLabel title = new JLabel("Timetable");
+        title.setFont(FONT_HEADER);
+        title.setForeground(TEXT_PRIMARY);
+        headerPanel.add(title, BorderLayout.WEST);
+        panel.add(headerPanel, BorderLayout.NORTH);
+
+        // Visual Timetable Table Setup
+        visualTimetable = new JTable();
+        visualTimetable.setRowHeight(60); // Taller rows for readability
+        visualTimetable.setShowVerticalLines(true);
+        visualTimetable.setGridColor(BORDER_COLOR);
+        visualTimetable.setFont(FONT_BODY);
+        visualTimetable.setEnabled(false); // Make it read-only/visual only
+
+        JTableHeader visualHeader = visualTimetable.getTableHeader();
+        visualHeader.setBackground(new Color(226, 232, 240)); // Slightly darker header
+        visualHeader.setForeground(TEXT_PRIMARY);
+        visualHeader.setFont(FONT_SUBHEADER);
+        visualHeader.setPreferredSize(new Dimension(0, 40));
+
+        JScrollPane visualScrollPane = new JScrollPane(visualTimetable);
+        visualScrollPane.setBorder(new LineBorder(BORDER_COLOR));
+        visualScrollPane.getViewport().setBackground(Color.WHITE);
+
+        panel.add(visualScrollPane, BorderLayout.CENTER);
+
+        return panel;
+    }
 
     private void updateResultsTable() {
         setTableColumns(new String[]{
@@ -1220,6 +1452,79 @@ public class SchedulerGUI extends JFrame {
                 });
             }
         }
+        // Always sync the visual timetable when the main data is updated
+        updateVisualTimetable();
+    }
+
+    private void updateVisualTimetable() {
+        if (examPeriod == null || examPeriod.getExamMatrix() == null) return;
+
+        int days = examPeriod.getTotalDays();
+        int slots = examPeriod.getSlotsPerDay();
+
+        // 1. Create Columns: "Time Slot" + "Day 1", "Day 2"...
+        String[] columns = new String[days + 1];
+        columns[0] = "Time Slot";
+        for (int i = 0; i < days; i++) {
+            columns[i + 1] = "Day " + (i + 1);
+        }
+
+        DefaultTableModel model = new DefaultTableModel(columns, 0);
+        String[][] matrix = examPeriod.getExamMatrix(); // [day][slot]
+
+        // 2. Calculate Rows (Time Slots)
+        // Start: 09:00. Duration: 2h (120 min) per slot
+        int startHour = 9;
+        int startMin = 0;
+        int slotDurationMinutes = 120; // 2 hours exactly
+        int examDurationMinutes = 120; // 2 hours
+
+        for (int s = 0; s < slots; s++) {
+            Object[] rowData = new Object[days + 1];
+
+            // Calculate Start Time
+            int totalStartMinutes = (startHour * 60) + startMin + (s * slotDurationMinutes);
+            int sh = totalStartMinutes / 60;
+            int sm = totalStartMinutes % 60;
+
+            // Calculate End Time (Start + 2h exam duration)
+            int totalEndMinutes = totalStartMinutes + examDurationMinutes;
+            int eh = totalEndMinutes / 60;
+            int em = totalEndMinutes % 60;
+
+            String timeStr = String.format("%02d:%02d - %02d:%02d", sh, sm, eh, em);
+            rowData[0] = timeStr;
+
+            // Fill Data for each Day
+            for (int d = 0; d < days; d++) {
+                if (s < matrix[d].length) {
+                    String code = matrix[d][s];
+                    // Clean up fixed tag for cleaner UI
+                    rowData[d + 1] = (code != null) ? code.replace("[FIXED] ", "") : "";
+                } else {
+                    rowData[d + 1] = "";
+                }
+            }
+            model.addRow(rowData);
+        }
+
+        visualTimetable.setModel(model);
+        // Center align columns for better look
+        DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
+        centerRenderer.setHorizontalAlignment(SwingConstants.CENTER);
+        for (int i = 0; i < visualTimetable.getColumnCount(); i++) {
+            visualTimetable.getColumnModel().getColumn(i).setCellRenderer(centerRenderer);
+        }
+        // First column (Time) bold/different color
+        visualTimetable.getColumnModel().getColumn(0).setCellRenderer(new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                c.setFont(new Font("SansSerif", Font.BOLD, 12));
+                c.setBackground(new Color(241, 245, 249));
+                return c;
+            }
+        });
     }
 
 
@@ -1586,6 +1891,13 @@ public class SchedulerGUI extends JFrame {
     private void setTableColumns(String[] columns) {
         DefaultTableModel model = new DefaultTableModel(columns, 0);
         resultsTable.setModel(model);
+        
+        // RE-ATTACH SORTER ON MODEL CHANGE
+        TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(model);
+        resultsTable.setRowSorter(sorter);
+        
+        // RE-APPLY SEARCH FILTER
+        applyCurrentSearchFilter();
     }
     // gets data from database if user imported files before
     private void loadFromDatabaseIfAvailable() {
@@ -1615,7 +1927,8 @@ public class SchedulerGUI extends JFrame {
                 btnValidate,
                 btnConfig,
                 btnScheduler,
-                btnResults
+                btnResults,
+                btnTimetable
         };
 
         // Reset others
