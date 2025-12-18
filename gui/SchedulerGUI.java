@@ -11,6 +11,7 @@ import Desktop_Application_Project_.parser.Parser;
 import Desktop_Application_Project_.parser.impl.CoreParsers;
 
 import javax.swing.*;
+import javax.swing.border.Border;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 import javax.swing.filechooser.FileNameExtensionFilter;
@@ -83,6 +84,21 @@ public class SchedulerGUI extends JFrame {
     private final Font FONT_BODY = new Font("SansSerif", Font.PLAIN, 13);
     private final Font FONT_MONO = new Font("Monospaced", Font.PLAIN, 13);
 
+    private Timer activeAnimTimer;
+    private int currentInset = 20;
+    private final int TARGET_INSET = 28;
+
+
+    private final Border MENU_NORMAL_BORDER =
+            new EmptyBorder(10, 20, 10, 15);
+
+    private final Border MENU_ACTIVE_BORDER =
+            BorderFactory.createCompoundBorder(
+                    BorderFactory.createMatteBorder(0, 4, 0, 0, ACCENT_BLUE),
+                    new EmptyBorder(10, 24, 10, 15)
+            );
+
+
     public SchedulerGUI(List<Student> students, List<Classroom> classrooms, List<Course> masterCourses, List<Course> enrolledCourses) {
         this.students = students;
         this.classrooms = classrooms;
@@ -129,10 +145,11 @@ public class SchedulerGUI extends JFrame {
         updateResultsTable();
         updateStats();
 
+        setActiveButton(btnDashboard);
+
     }
 
     // Helper Methods to Build UI
-
     private JPanel createSidebar() {
         JPanel sidebar = new JPanel();
         sidebar.setLayout(new GridLayout(12, 1, 8, 8)); // More spacing
@@ -153,12 +170,34 @@ public class SchedulerGUI extends JFrame {
         btnScheduler = createMenuButton("Run Scheduler");
         btnResults = createMenuButton("View Results");
 
-        btnDashboard.addActionListener(e -> cardLayout.show(mainContentPanel, "dashboard"));
-        btnImport.addActionListener(e -> cardLayout.show(mainContentPanel, "import"));
-        btnValidate.addActionListener(e -> cardLayout.show(mainContentPanel, "validate"));
-        btnConfig.addActionListener(e -> cardLayout.show(mainContentPanel, "config"));
-        btnScheduler.addActionListener(e -> cardLayout.show(mainContentPanel, "scheduler"));
-        btnResults.addActionListener(e -> cardLayout.show(mainContentPanel, "results"));
+        btnDashboard.addActionListener(e -> {
+            setActiveButton(btnDashboard);
+            cardLayout.show(mainContentPanel, "dashboard");
+        });
+        btnImport.addActionListener(e -> {
+            setActiveButton(btnImport);
+            cardLayout.show(mainContentPanel, "import");
+        });
+
+        btnValidate.addActionListener(e -> {
+            setActiveButton(btnValidate);
+            cardLayout.show(mainContentPanel, "validate");
+        });
+
+        btnConfig.addActionListener(e -> {
+            setActiveButton(btnConfig);
+            cardLayout.show(mainContentPanel, "config");
+        });
+
+        btnScheduler.addActionListener(e -> {
+            setActiveButton(btnScheduler);
+            cardLayout.show(mainContentPanel, "scheduler");
+        });
+
+        btnResults.addActionListener(e -> {
+            setActiveButton(btnResults);
+            cardLayout.show(mainContentPanel, "results");
+        });
 
         sidebar.add(btnDashboard);
         sidebar.add(btnImport);
@@ -175,12 +214,13 @@ public class SchedulerGUI extends JFrame {
 
     private JButton createMenuButton(String text) {
         JButton btn = new JButton(text);
+        btn.setIconTextGap(10);
         btn.setFocusPainted(false);
         btn.setBackground(SIDEBAR_COLOR); // Transparent-ish look
         btn.setForeground(new Color(203, 213, 225)); // Lighter text
         btn.setFont(new Font("SansSerif", Font.BOLD, 13));
         btn.setHorizontalAlignment(SwingConstants.LEFT);
-        btn.setBorder(new EmptyBorder(10, 15, 10, 15));
+        btn.setBorder(MENU_NORMAL_BORDER);
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
         // Simple hover effect logic
@@ -1566,5 +1606,56 @@ public class SchedulerGUI extends JFrame {
             enrollmentService.loadEnrollments(masterCourses, students);
             enrolledCourses = masterCourses;
         }
+    }
+    private void setActiveButton(JButton activeBtn) {
+
+        JButton[] allButtons = {
+                btnDashboard,
+                btnImport,
+                btnValidate,
+                btnConfig,
+                btnScheduler,
+                btnResults
+        };
+
+        // Reset others
+        for (JButton btn : allButtons) {
+            btn.setBackground(SIDEBAR_COLOR);
+            btn.setForeground(new Color(203, 213, 225));
+            btn.setBorder(MENU_NORMAL_BORDER);
+        }
+
+        activeBtn.setBackground(new Color(55, 72, 95));
+        activeBtn.setForeground(Color.WHITE);
+
+        // Stop previous animation if exists
+        if (activeAnimTimer != null && activeAnimTimer.isRunning()) {
+            activeAnimTimer.stop();
+        }
+
+        currentInset = 20;
+
+        activeAnimTimer = new Timer(15, e -> {
+            currentInset += 2;
+
+            activeBtn.setBorder(createAnimatedActiveBorder(currentInset));
+            activeBtn.revalidate();
+            activeBtn.repaint();
+
+            if (currentInset >= TARGET_INSET) {
+                ((Timer) e.getSource()).stop();
+            }
+        });
+        activeAnimTimer.start();
+    }
+
+    private Border createAnimatedActiveBorder(int leftInset) {
+        return BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 4, 0, 0, ACCENT_BLUE),
+                BorderFactory.createCompoundBorder(
+                        new LineBorder(new Color(255, 255, 255, 25), 1),
+                        new EmptyBorder(10, leftInset, 10, 15)
+                )
+        );
     }
 }

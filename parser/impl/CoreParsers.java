@@ -106,11 +106,11 @@ public class CoreParsers {
                     line = line.trim();
                     if (line.isEmpty()) continue;
 
-                    // CourseCode satırı
+
                     if (!line.startsWith("[")) {
                         currentCourse = line;
                     }
-                    // Öğrenci listesi satırı
+
                     else if (currentCourse != null) {
                         String clean = line.replace("[", "").replace("]", "");
                         String[] tokens = clean.split(",");
