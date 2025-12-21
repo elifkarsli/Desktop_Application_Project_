@@ -931,7 +931,7 @@ public class SchedulerGUI extends JFrame {
         return wrapper;
     }
 
-    // Screen 5: Scheduler Panel
+    // Screen 5: Scheduler Panel (UPDATED WITH LOAD FEATURE)
     private JPanel createSchedulerPanel() {
 
         JPanel root = new JPanel(new BorderLayout());
@@ -962,26 +962,42 @@ public class SchedulerGUI extends JFrame {
         center.setBackground(BG_CANVAS);
         center.setBorder(new EmptyBorder(20, 0, 0, 0));
 
-        // CONTROL CARD
+        // CONTROL CARD (Button container strip)
         JPanel controlCard = new JPanel(new BorderLayout());
         controlCard.setBackground(BG_CARD);
         controlCard.setBorder(BorderFactory.createCompoundBorder(
                 new LineBorder(BORDER_COLOR, 1, true),
                 new EmptyBorder(10, 16, 10, 16)
-
         ));
         controlCard.setMaximumSize(new Dimension(Integer.MAX_VALUE, 60));
         controlCard.setPreferredSize(new Dimension(0, 60));
 
+        // --- BUTTON GROUP ---
+        JPanel buttonGroup = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        buttonGroup.setBackground(BG_CARD);
 
+        // 1. Generate Button
         JButton btnGenerate = new JButton("▶ Generate Schedule");
         stylePrimaryButton(btnGenerate);
 
+        // 2. Load Saved Button (NEW FEATURE)
+        JButton btnLoadSaved = new JButton("📂 Load Saved");
+        btnLoadSaved.setFont(new Font("SansSerif", Font.BOLD, 14));
+        btnLoadSaved.setBackground(new Color(100, 116, 139)); // Grey/Blue tone
+        btnLoadSaved.setForeground(Color.WHITE);
+        btnLoadSaved.setFocusPainted(false);
+        btnLoadSaved.setBorder(new EmptyBorder(8, 18, 8, 18));
+        btnLoadSaved.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        buttonGroup.add(btnGenerate);
+        buttonGroup.add(btnLoadSaved);
+
+        // Counter label on the right
         lblScheduledCount = new JLabel("Scheduled: 0 exams");
         lblScheduledCount.setFont(FONT_BODY);
         lblScheduledCount.setForeground(TEXT_SECONDARY);
 
-        controlCard.add(btnGenerate, BorderLayout.WEST);
+        controlCard.add(buttonGroup, BorderLayout.WEST);
         controlCard.add(lblScheduledCount, BorderLayout.EAST);
 
         center.add(controlCard);
@@ -1004,8 +1020,9 @@ public class SchedulerGUI extends JFrame {
         stylePrimaryButton(btnViewResults);
         btnViewResults.setVisible(false);
 
+        // View Results Action (Fixed to update the left menu selection)
         btnViewResults.addActionListener(e -> {
-            setActiveButton(btnResults);
+            setActiveButton(btnResults); // Activate the Results button in the sidebar
             cardLayout.show(mainContentPanel, "results");
             updateResultsTable();
         });
@@ -1015,11 +1032,59 @@ public class SchedulerGUI extends JFrame {
 
         root.add(center, BorderLayout.CENTER);
 
-        // ACTION
+        // --- ACTION LISTENERS ---
+
+        // 1. Generate Button Action
         btnGenerate.addActionListener(e -> {
             schedulerStatusPanel.removeAll();
             btnViewResults.setVisible(false);
             runSchedulingAndLog();
+        });
+
+        // 2. Load Saved Button Action (NEW FEATURE LOGIC)
+        btnLoadSaved.addActionListener(e -> {
+            JFileChooser fileChooser = new JFileChooser();
+            fileChooser.setDialogTitle("Select Saved Schedule CSV");
+            fileChooser.setFileFilter(new FileNameExtensionFilter("CSV Files", "csv"));
+            // Start from the current project directory
+            fileChooser.setCurrentDirectory(new File("."));
+
+            if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+                File file = fileChooser.getSelectedFile();
+
+                // Get Config (Day/Slot) settings
+                int days = (Integer) spinDays.getValue();
+                int slots = (Integer) spinSlots.getValue();
+
+                // RESET CURRENT SCHEDULE (IMPORTANT!)
+                this.examPeriod = new ExamPeriod(days, slots);
+
+                try {
+                    // Invoke the importer
+                    ScheduleImporter importer = new ScheduleImporter();
+                    importer.importSchedule(file, this.examPeriod);
+
+                    // If successful, update the status panel
+                    schedulerStatusPanel.removeAll();
+                    addStatusItem("Schedule Loaded",
+                            "Successfully loaded schedule from: " + file.getName(),
+                            SUCCESS_GREEN);
+
+                    lblScheduledCount.setText("Scheduled: Loaded from File");
+
+                    // Show the 'View Results' button
+                    btnViewResults.setVisible(true);
+
+                    // Update background tables
+                    updateResultsTable();
+                    updateVisualTimetable();
+
+                    JOptionPane.showMessageDialog(this, "Schedule loaded successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(this, "Error loading schedule: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
         });
 
         return root;
