@@ -527,7 +527,9 @@ public class SchedulerGUI extends JFrame {
         JLabel title = new JLabel("Import Data Files");
         title.setFont(FONT_HEADER);
         title.setForeground(TEXT_PRIMARY);
-        gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2;
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.gridwidth = 2;
         panel.add(title, gbc);
 
         // Visual Drag & Drop Zones
@@ -659,16 +661,34 @@ public class SchedulerGUI extends JFrame {
             }
         });
 
-        gbc.gridy = 4; gbc.gridwidth = 2; gbc.anchor = GridBagConstraints.CENTER;
+        gbc.gridy = 4;
+        gbc.gridwidth = 2;
+        gbc.anchor = GridBagConstraints.CENTER;
         gbc.fill = GridBagConstraints.NONE;
         gbc.insets = new Insets(40, 0, 0, 0);
         panel.add(btnLoad, gbc);
 
+        // FOOTER WARNING TEXT
+        JLabel lblHint = new JLabel(
+                "<html>If you re-import or import any file, please import all the files for getting a  successful calculation !!!</html>"
+        );
+        lblHint.setFont(new Font("SansSerif", Font.PLAIN, 14));
+        lblHint.setForeground(new Color(148, 163, 184));
+        lblHint.setHorizontalAlignment(SwingConstants.RIGHT);
+
+        JPanel footerPanel = new JPanel(new BorderLayout());
+        footerPanel.setBackground(BG_CANVAS);
+        footerPanel.setBorder(new EmptyBorder(0, 0, 14, 22));
+        footerPanel.add(lblHint, BorderLayout.EAST);
+
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.setBackground(BG_CANVAS);
         wrapper.add(panel, BorderLayout.NORTH);
+        wrapper.add(footerPanel, BorderLayout.SOUTH);
+
         return wrapper;
     }
+
 
     private JTextField createDragDropZone(JPanel panel, String labelText, String defaultPath, int row, int col) {
         // Container for the zone
