@@ -1005,6 +1005,7 @@ public class SchedulerGUI extends JFrame {
         btnViewResults.setVisible(false);
 
         btnViewResults.addActionListener(e -> {
+            setActiveButton(btnResults);
             cardLayout.show(mainContentPanel, "results");
             updateResultsTable();
         });
