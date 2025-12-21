@@ -25,7 +25,7 @@ public class StudentDAO {
     }
 
     public void insertStudents(List<Student> students) {
-        String sql = "INSERT OR IGNORE INTO students(student_id) VALUES (?)";
+        String sql = "INSERT INTO students(student_id) VALUES (?)";
 
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -61,4 +61,17 @@ public class StudentDAO {
 
         return students;
     }
+    public void clearTable() {
+        String sql = "DELETE FROM students";
+
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.executeUpdate();
+
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
 }

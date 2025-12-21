@@ -542,63 +542,79 @@ public class SchedulerGUI extends JFrame {
 
         btnLoad.addActionListener(e -> {
             try {
-                // Parsing Logic
-                Parser<Student> studentParser = new CoreParsers.StudentParser();
-                students = studentParser.parse(new File(txtStudent.getText()));
 
-                Parser<Course> courseParser = new CoreParsers.CourseParser();
-                masterCourses = courseParser.parse(new File(txtCourse.getText()));
+                StudentDAO studentDAO = new StudentDAO();
+                CourseDAO courseDAO = new CourseDAO();
+                ClassroomDAO classroomDAO = new ClassroomDAO();
+                AttendanceDAO attendanceDAO = new AttendanceDAO();
 
-                Parser<Classroom> roomParser = new CoreParsers.ClassroomParser();
-                classrooms = roomParser.parse(new File(txtRoom.getText()));
+                File studentFile = new File(txtStudent.getText());
+                if (studentFile.exists()) {
+                    Parser<Student> studentParser = new CoreParsers.StudentParser();
+                    students = studentParser.parse(studentFile);
 
-                //  HANDLE RAW TYPE FOR ATTENDANCE PARSER
-                Parser attendanceParser = new CoreParsers.AttendanceParser();
-                List<?> rawAttendanceData = attendanceParser.parse(new File(txtAtt.getText()));
+                    studentDAO.clearTable();
+                    studentDAO.insertStudents(students);
+                } else {
+                    students = studentDAO.getAllStudents();
+                }
 
-                // HANDLE ATTENDANCE IMPORT (CRITICAL FIX)
-                if (!rawAttendanceData.isEmpty() && rawAttendanceData.get(0) instanceof String[]) {
+                File courseFile = new File(txtCourse.getText());
+                if (courseFile.exists()) {
+                    Parser<Course> courseParser = new CoreParsers.CourseParser();
+                    masterCourses = courseParser.parse(courseFile);
 
-                    List<String[]> rows = (List<String[]>) rawAttendanceData;
+                    courseDAO.clearTable();
+                    courseDAO.insertCourses(masterCourses);
+                } else {
+                    masterCourses = courseDAO.getAllCourses();
+                }
 
-                    //Clear previous enrollments
+                File roomFile = new File(txtRoom.getText());
+                if (roomFile.exists()) {
+                    Parser<Classroom> roomParser = new CoreParsers.ClassroomParser();
+                    classrooms = roomParser.parse(roomFile);
+
+                    classroomDAO.clearTable();
+                    classroomDAO.insertClassrooms(classrooms);
+                } else {
+                    classrooms = classroomDAO.getAllClassrooms();
+                }
+
+                File attFile = new File(txtAtt.getText());
+                if (attFile.exists()) {
+
+                    Parser<String[]> attendanceParser = new CoreParsers.AttendanceParser();
+                    List<String[]> rows = attendanceParser.parse(attFile);
+
+                    // Clear in-memory enrollments
                     for (Course c : masterCourses) {
                         c.getEnrolledStudents().clear();
                     }
 
-                    //Manually link students to courses
+                    // Rebuild relations
                     for (String[] row : rows) {
                         if (row.length < 2) continue;
 
                         String studentId = row[0];
                         String courseCode = row[1];
 
-                        Optional<Course> courseOpt = masterCourses.stream()
-                                .filter(c -> c.getCourseCode().equals(courseCode))
-                                .findFirst();
-
                         Optional<Student> studentOpt = students.stream()
                                 .filter(s -> s.getId().equals(studentId))
                                 .findFirst();
 
-                        if (courseOpt.isPresent() && studentOpt.isPresent()) {
+                        Optional<Course> courseOpt = masterCourses.stream()
+                                .filter(c -> c.getCourseCode().equals(courseCode))
+                                .findFirst();
+
+                        if (studentOpt.isPresent() && courseOpt.isPresent()) {
                             courseOpt.get().enrollStudent(studentOpt.get());
                         }
                     }
 
-                    enrolledCourses = masterCourses;
+                    attendanceDAO.clearTable();
 
-                    StudentDAO studentDAO = new StudentDAO();
-                    CourseDAO courseDAO = new CourseDAO();
-                    ClassroomDAO classroomDAO = new ClassroomDAO();
-                    AttendanceDAO attendanceDAO = new AttendanceDAO();
-                    // Insert base entities
-                    studentDAO.insertStudents(students);
-                    courseDAO.insertCourses(masterCourses);
-                    classroomDAO.insertClassrooms(classrooms);
-                    // Insert attendance relations
                     List<String[]> attendanceRowsForDB = new ArrayList<>();
-
                     for (Course c : masterCourses) {
                         for (Student s : c.getEnrolledStudents()) {
                             attendanceRowsForDB.add(
@@ -608,34 +624,38 @@ public class SchedulerGUI extends JFrame {
                     }
 
                     attendanceDAO.insertAttendance(attendanceRowsForDB);
-
-
-                } else if (!rawAttendanceData.isEmpty() && rawAttendanceData.get(0) instanceof Course) {
-                    // Legacy Format Detected (List<Course>)
-                    enrolledCourses = (List<Course>) rawAttendanceData;
-                } else {
-                    // Empty list or unknown type
-                    enrolledCourses = new ArrayList<>();
                 }
 
-                if (new File(txtFixed.getText()).exists()) {
+                enrolledCourses = masterCourses;
+
+                File fixedFile = new File(txtFixed.getText());
+                if (fixedFile.exists()) {
                     Parser<FixedExam> fixedParser = new CoreParsers.FixedExamParser();
-                    fixedExams = fixedParser.parse(new File(txtFixed.getText()));
+                    fixedExams = fixedParser.parse(fixedFile);
                 }
 
-                // Refresh course selector AFTER import
                 courseSelector.removeAllItems();
                 courseSelector.addItem("Select Course");
-
                 for (Course c : masterCourses) {
                     courseSelector.addItem(c.getCourseCode());
                 }
 
                 updateStats();
-                JOptionPane.showMessageDialog(this, "Data Loaded Successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+
+                JOptionPane.showMessageDialog(
+                        this,
+                        "Data Loaded Successfully!",
+                        "Success",
+                        JOptionPane.INFORMATION_MESSAGE
+                );
 
             } catch (DataImportException ex) {
-                JOptionPane.showMessageDialog(this, "Error loading data: " + ex.getMessage(), "Import Error", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(
+                        this,
+                        "Error loading data: " + ex.getMessage(),
+                        "Import Error",
+                        JOptionPane.ERROR_MESSAGE
+                );
             }
         });
 

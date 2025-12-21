@@ -25,7 +25,7 @@ public class ClassroomDAO {
     }
 
     public void insertClassrooms(List<Classroom> classrooms) {
-        String sql = "INSERT OR IGNORE INTO classrooms(room_code, capacity) VALUES (?, ?)";
+        String sql = "INSERT INTO classrooms(room_code, capacity) VALUES (?, ?)";
 
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -66,4 +66,17 @@ public class ClassroomDAO {
 
         return classrooms;
     }
+    public void clearTable() {
+        String sql = "DELETE FROM classrooms";
+
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.executeUpdate();
+
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
 }

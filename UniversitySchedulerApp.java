@@ -12,9 +12,6 @@ import Desktop_Application_Project_.parser.impl.CoreParsers;
 import Desktop_Application_Project_.service.*;
 import Desktop_Application_Project_.service.DatabaseManager;
 import Desktop_Application_Project_.model.DomainModels.ExamPeriod;
-
-
-
 import javax.swing.*;
 import java.io.File;
 import java.util.Collections;
@@ -36,98 +33,68 @@ public class UniversitySchedulerApp {
         String outputPath = "output/result.txt";
 
         try {
+            StudentDAO studentDAO = new StudentDAO();
+            CourseDAO courseDAO = new CourseDAO();
+            ClassroomDAO classroomDAO = new ClassroomDAO();
+            AttendanceDAO attendanceDAO = new AttendanceDAO();
+
             // [1] Parse Students
             System.out.println("\n[1] Parsing Students...");
 
             Parser<Student> studentParser = new CoreParsers.StudentParser();
-            StudentDAO studentDAO = new StudentDAO();
-            List<Student> students = Collections.emptyList();
+            List<Student> students;
 
-            if (studentFile.exists()) {
-                if (studentDAO.isEmpty()) {
-                    System.out.println("    Students table empty. Importing from CSV...");
-                    students = studentParser.parse(studentFile);
-                    studentDAO.insertStudents(students);
-                } else {
-                    System.out.println("    Loading students from database...");
-                    students = studentDAO.getAllStudents();
-                }
-
+            if (studentFile.exists() && studentDAO.isEmpty()) {
+                System.out.println("    First time import of students from CSV...");
+                students = studentParser.parse(studentFile);
+                studentDAO.insertStudents(students);
             } else {
-                System.out.println("    Student file not found at: " + studentFile.getPath());
+                System.out.println("    Loading students from database...");
+                students = studentDAO.getAllStudents();
             }
 
             // [2] Parse Classrooms
             System.out.println("\n[2] Parsing Classrooms...");
-            List<Classroom> classrooms = Collections.emptyList();
+            Parser<Classroom> roomParser = new CoreParsers.ClassroomParser();
+            List<Classroom> classrooms;
 
-            if (classroomFile.exists()) {
-                Parser<Classroom> roomParser = new CoreParsers.ClassroomParser();
-                ClassroomDAO classroomDAO = new ClassroomDAO();
-
-                if (classroomDAO.isEmpty()) {
-                    System.out.println("    Classrooms table empty. Importing from CSV...");
-                    classrooms = roomParser.parse(classroomFile);
-                    classroomDAO.insertClassrooms(classrooms);
-                } else {
-                    System.out.println("    Loading classrooms from database...");
-                    classrooms = classroomDAO.getAllClassrooms();
-                }
-
-                System.out.println("    Successfully loaded " + classrooms.size() + " classrooms.");
+            if (classroomFile.exists() && classroomDAO.isEmpty()) {
+                System.out.println("    Importing classrooms from CSV (first time)...");
+                classrooms = roomParser.parse(classroomFile);
+                classroomDAO.insertClassrooms(classrooms);
             } else {
-                System.out.println("    Classroom file not found.");
+                System.out.println("    Loading classrooms from database...");
+                classrooms = classroomDAO.getAllClassrooms();
             }
 
             // [3] Parse Course List
             System.out.println("\n[3] Parsing Master Course List...");
-            List<Course> masterCourses = Collections.emptyList();
+            Parser<Course> courseParser = new CoreParsers.CourseParser();
+            List<Course> masterCourses;
 
-            if (courseFile.exists()) {
-                Parser<Course> courseParser = new CoreParsers.CourseParser();
-                CourseDAO courseDAO = new CourseDAO();
-
-                if (courseDAO.isEmpty()) {
-                    System.out.println("    Courses table empty. Importing from CSV...");
-                    masterCourses = courseParser.parse(courseFile);
-                    courseDAO.insertCourses(masterCourses);
-                } else {
-                    System.out.println("    Loading courses from database...");
-                    masterCourses = courseDAO.getAllCourses();
-                }
-
-                System.out.println("    Successfully loaded " + masterCourses.size() + " master courses.");
+            if (courseFile.exists() && courseDAO.isEmpty()) {
+                System.out.println("    Importing courses from CSV (first time)...");
+                masterCourses = courseParser.parse(courseFile);
+                courseDAO.insertCourses(masterCourses);
             } else {
-                System.out.println("    Master Course file not found.");
+                System.out.println("    Loading courses from database...");
+                masterCourses = courseDAO.getAllCourses();
             }
-
 
             // [4] Process Attendance (Student–Course relations)
             System.out.println("\n[4] Processing Attendances...");
-
-            AttendanceDAO attendanceDAO = new AttendanceDAO();
             CourseEnrollmentService enrollmentService = new CourseEnrollmentService();
 
-            if (attendanceFile.exists()) {
-
-                if (attendanceDAO.isEmpty()) {
-                    System.out.println("    Attendance table empty. Importing from CSV...");
-
-                    Parser<String[]> attendanceParser = new CoreParsers.AttendanceParser();
-                    List<String[]> attendanceRows = attendanceParser.parse(attendanceFile);
-
-                    attendanceDAO.insertAttendance(attendanceRows);
-                } else {
-                    System.out.println("    Loading attendance from database...");
-                }
-
-                enrollmentService.loadEnrollments(masterCourses, students);
-
-                System.out.println("    Attendance relations loaded successfully.");
-
+            if (attendanceFile.exists() && attendanceDAO.isEmpty()) {
+                System.out.println("    Importing attendance from CSV (first time)...");
+                Parser<String[]> attendanceParser = new CoreParsers.AttendanceParser();
+                List<String[]> attendanceRows = attendanceParser.parse(attendanceFile);
+                attendanceDAO.insertAttendance(attendanceRows);
             } else {
-                System.out.println("    Attendance file not found.");
+                System.out.println("    Loading attendance from database...");
             }
+
+            enrollmentService.loadEnrollments(masterCourses, students);
 
             // [5] Data Validation
             System.out.println("\n[5] Validating Referential Integrity...");

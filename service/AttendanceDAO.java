@@ -28,8 +28,7 @@ public class AttendanceDAO {
     // CSV -> DB
     public void insertAttendance(List<String[]> attendance) {
         String sql = """
-            INSERT OR IGNORE INTO attendance(student_id, course_code)
-            VALUES (?, ?)
+                INSERT INTO attendance(student_id, course_code) VALUES (?, ?)
         """;
 
         try (Connection conn = DatabaseManager.getConnection();
@@ -70,4 +69,17 @@ public class AttendanceDAO {
 
         return map;
     }
+    public void clearTable() {
+        String sql = "DELETE FROM attendance";
+
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.executeUpdate();
+
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
 }
