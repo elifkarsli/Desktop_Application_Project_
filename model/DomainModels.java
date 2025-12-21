@@ -5,6 +5,7 @@ import java.util.List;
 
 public class DomainModels {
 
+    /* ===================== STUDENT ===================== */
     public static class Student {
         private final String id;
 
@@ -16,137 +17,154 @@ public class DomainModels {
         }
 
         public String getId() { return id; }
-
-        @Override
-        public String toString() { return "Student{id='" + id + "'}"; }
     }
 
+    /* ===================== COURSE ===================== */
     public static class Course {
         private final String courseCode;
-        private final List<Student> enrolledStudents;
+        private final List<Student> enrolledStudents = new ArrayList<>();
 
         public Course(String courseCode) {
             if (courseCode == null || courseCode.trim().isEmpty()) {
                 throw new IllegalArgumentException("Course Code cannot be null or empty");
             }
             this.courseCode = courseCode.trim();
-            this.enrolledStudents = new ArrayList<>();
         }
-
         public void enrollStudent(Student student) {
             if (student != null) {
-                this.enrolledStudents.add(student);
+                enrolledStudents.add(student);
             }
         }
 
+
         public String getCourseCode() { return courseCode; }
         public List<Student> getEnrolledStudents() { return enrolledStudents; }
-
-        @Override
-        public String toString() {
-            return "Course{code='" + courseCode + "', enrollmentCount=" + enrolledStudents.size() + "}";
-        }
     }
 
+    /* ===================== CLASSROOM ===================== */
     public static class Classroom {
         private final String name;
         private final int capacity;
 
         public Classroom(String name, int capacity) {
-            if (name == null || name.trim().isEmpty()) {
-                throw new IllegalArgumentException("Classroom name cannot be empty");
-            }
-            if (capacity < 0) {
-                throw new IllegalArgumentException("Capacity cannot be negative");
-            }
             this.name = name.trim();
             this.capacity = capacity;
         }
+
         public String getName() { return name; }
         public int getCapacity() { return capacity; }
-
-        @Override
-        public String toString() { return "Classroom{name='" + name + "', capacity=" + capacity + "}"; }
     }
 
-        //  ExamPeriod entity
-        public static class ExamPeriod {
-            private final int totalDays;
-            private final int slotsPerDay;
-            private final String[][] examMatrix;
+    /* ===================== EXAM PERIOD ===================== */
+    public static class ExamPeriod {
 
-            public ExamPeriod(int totalDays, int slotsPerDay) {
-                if (totalDays <= 0 || slotsPerDay <= 0) {
-                    throw new IllegalArgumentException("totalDays and slotsPerDay must be positive");
-                }
-                this.totalDays = totalDays;
-                this.slotsPerDay = slotsPerDay;
-                this.examMatrix = new String[totalDays][slotsPerDay];
-            }
+        private final int totalDays;
+        private final int slotsPerDay;
+        private final String[][] examMatrix;
 
-            public int getTotalDays() {
-                return totalDays;
-            }
+        public ExamPeriod(int totalDays, int slotsPerDay) {
+            this.totalDays = totalDays;
+            this.slotsPerDay = slotsPerDay;
+            this.examMatrix = new String[totalDays][slotsPerDay];
+        }
+        public int getTotalDays() {
+            return totalDays;
+        }
 
-            public int getSlotsPerDay() {
-                return slotsPerDay;
-            }
+        public int getSlotsPerDay() {
+            return slotsPerDay;
+        }
 
-            public String[][] getExamMatrix() {
-                return examMatrix;
-            }
 
-            public void assignExam(int day, int slot, String courseCode) {
-                examMatrix[day][slot] = courseCode;
-            }
 
-            public boolean assignFixedExam(int day, int slot, String courseCode) {
-                if (examMatrix[day][slot] != null) {
-                    return false;
-                }
-                examMatrix[day][slot] = "[FIXED] " + courseCode;
-                return true;
-            }
+        public boolean isFixedSlot(int day, int slot) {
+            return examMatrix[day][slot] != null &&
+                    examMatrix[day][slot].startsWith("[FIXED]");
+        }
 
-            public void printExamSchedule() {
-                System.out.println("Exam Schedule:");
-                for (int d = 0; d < totalDays; d++) {
-                    System.out.print("Day " + (d + 1) + ": ");
-                    for (int s = 0; s < slotsPerDay; s++) {
-                        System.out.print(
-                                (examMatrix[d][s] != null ? examMatrix[d][s] : "empty") + " | "
-                        );
+        public boolean isCourseAlreadyScheduled(String courseCode) {
+            for (int d = 0; d < totalDays; d++) {
+                for (int s = 0; s < slotsPerDay; s++) {
+                    if (examMatrix[d][s] != null) {
+                        String clean = examMatrix[d][s]
+                                .replace("[FIXED]", "")
+                                .trim();
+                        if (clean.equals(courseCode)) {
+                            return true;
+                        }
                     }
-                    System.out.println();
                 }
             }
+            return false;
         }
 
-    // Fixed Exam entity
-        public static class FixedExam {
-            private final String courseCode;
-            private final int day;
-            private final int slot;
-            private final String classroom;
-            private final boolean locked;
 
-            public FixedExam(String courseCode, int day, int slot, String classroom) {
-                this.courseCode = courseCode;
-                this.day = day;
-                this.slot = slot;
-                this.classroom = classroom;
-                this.locked = true; // fixed exam is always locked
+        public boolean assignExam(int day, int slot, String courseCode) {
+
+
+            if (isCourseAlreadyScheduled(courseCode)) {
+                return false;
             }
 
-            public String getCourseCode() { return courseCode; }
-            public int getDay() { return day; }
-            public int getSlot() { return slot; }
-            public String getClassroom() { return classroom; }
-            public boolean isLocked() { return locked; }
 
-            @Override
-            public String toString() {
-                return "[Fixed] " + courseCode + " @ Day " + day + ", Slot " + slot + " (" + classroom + ")";
+            if (isFixedSlot(day, slot)) {
+                return false;
+            }
+
+
+            if (examMatrix[day][slot] != null) {
+                return false;
+            }
+
+            examMatrix[day][slot] = courseCode;
+            return true;
+        }
+
+
+        public boolean assignFixedExam(int day, int slot, String courseCode) {
+            if (examMatrix[day][slot] != null) {
+                return false;
+            }
+            examMatrix[day][slot] = "[FIXED] " + courseCode;
+            return true;
+        }
+
+        public String[][] getExamMatrix() {
+            return examMatrix;
+        }
+
+        public void printExamSchedule() {
+            System.out.println("\n=== FINAL EXAM SCHEDULE ===");
+            for (int d = 0; d < totalDays; d++) {
+                System.out.print("Day " + (d + 1) + ": ");
+                for (int s = 0; s < slotsPerDay; s++) {
+                    System.out.print(
+                            (examMatrix[d][s] != null ? examMatrix[d][s] : "empty") + " | "
+                    );
+                }
+                System.out.println();
             }
         }
+    }
+
+    /* ===================== FIXED EXAM ===================== */
+    public static class FixedExam {
+        private final String courseCode;
+        private final int day;
+        private final int slot;
+        private final String classroom;
+
+        public FixedExam(String courseCode, int day, int slot, String classroom) {
+            this.courseCode = courseCode;
+            this.day = day;
+            this.slot = slot;
+            this.classroom = classroom;
+        }
+
+        public String getCourseCode() { return courseCode; }
+        public int getDay() { return day; }
+        public int getSlot() { return slot; }
+        public String getClassroom() { return classroom; }
+    }
 }
+

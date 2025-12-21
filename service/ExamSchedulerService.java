@@ -38,7 +38,7 @@ public class ExamSchedulerService {
         for (Classroom classroom : classrooms) {
             classroomUsage.put(classroom, 0);
         }
-
+        registerFixedExams(examPeriod);
         // 1: Prioritize courses (more students first)
         courses.sort(
                 Comparator.comparingInt(
@@ -48,6 +48,11 @@ public class ExamSchedulerService {
 
         // 2: Try to place each course
         for (Course course : courses) {
+
+
+            if (examPeriod.isCourseAlreadyScheduled(course.getCourseCode())) {
+                continue;
+            }
 
             int studentCount = course.getEnrolledStudents().size();
             Placement bestPlacement = null;
@@ -85,6 +90,7 @@ public class ExamSchedulerService {
                     }
                 }
             }
+
 
             // Place course if possible
             if (bestPlacement != null) {
@@ -159,4 +165,21 @@ public class ExamSchedulerService {
             this.classroom = classroom;
         }
     }
+    private void registerFixedExams(ExamPeriod examPeriod) {
+
+        String[][] matrix = examPeriod.getExamMatrix();
+
+        for (int day = 0; day < matrix.length; day++) {
+            for (int slot = 0; slot < matrix[day].length; slot++) {
+
+                if (matrix[day][slot] != null &&
+                        matrix[day][slot].startsWith("[FIXED]")) {
+
+                    int realDay = day + 1;
+                    examsPerDay.put(realDay, examsPerDay.get(realDay) + 1);
+                }
+            }
+        }
+    }
+
 }
