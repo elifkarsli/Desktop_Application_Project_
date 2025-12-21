@@ -1,102 +1,64 @@
-🎓 University Exam Scheduler 
+🎓 University Exam Scheduler
 
-University Exam Scheduler is a desktop Java program. 
-It helps schools and universities create exam schedules automatically. 
+University Exam Scheduler is a desktop application developed in Java for schools and universities. It automatically creates exam schedules, making the process faster and more reliable than manual planning, which is often difficult and time-consuming.
 
-Making exam schedules by hand is hard and takes a lot of time. 
-This program does it faster and without mistakes. 
+🎯 Purpose of the Program
 
- 
+The main goal of this program is to simplify exam scheduling. It prevents students from having two exams at the same time, ensures that classrooms have enough capacity, respects exams with fixed dates and times, and reduces human errors while saving time.
 
-🎯 What Is This Program For? 
+⚙️ What the Program Does
 
-The program helps to: 
-Stop students from having two exams at the same time 
-Make sure classrooms are big enough 
-Respect exams with fixed times 
-Save time and avoid human errors 
+The program reads student, course, classroom, and attendance data from CSV files. It checks whether the data is valid, detects conflicts between exams, and automatically generates a suitable exam schedule. The final schedule is displayed on the screen and can also be saved as a file.
 
- 
+📂 Input Files (CSV)
 
-⚙️ What Does the Program Do? 
+All required CSV files must be placed in a folder named CSV_Files.
+The program uses the following files:
 
-Reads student, course, and classroom data from CSV files 
-Checks if the data is correct 
-Finds exam conflicts between courses 
-Creates an exam schedule automatically 
-Shows the schedule on the screen 
-Saves the schedule as a file 
+students.csv – contains student IDs
 
- 📂 Input Files (CSV) 
+courses.csv – contains course codes
 
-The program uses CSV files inside a folder called CSV_Files. 
-You need these files: 
-students.csv → list of student IDs 
-courses.csv → list of course codes 
-classrooms.csv → classroom names and capacities 
-attendance.csv → which student takes which course 
-fixed_exams.csv (optional) → exams with fixed time 
-You can create CSV files with Excel or Google Sheets. 
+classrooms.csv – contains classroom names and capacities
 
- 
+attendance.csv – shows which students are enrolled in which courses
 
-🧠 How It Works (Simple) 
+fixed_exams.csv (optional) – contains exams with fixed times
 
-The program checks all data 
-It looks for exam conflicts 
-Exams with common students are not placed at the same time 
-Fixed exams stay at their given time 
-The program tries different options It stops when it finds a correct schedule 
+These CSV files can be created using Excel or Google Sheets.
 
- 
+🧠 How It Works (Simple Explanation)
 
-🖥️ How to Use 
+First, the program checks all input data. Then it identifies exam conflicts, making sure that exams with common students are not scheduled at the same time. Exams with fixed times remain unchanged. The system tries different scheduling options until it finds a valid solution.
 
-Install Java 8 or newer 
-Put CSV files into the CSV_Files folder 
-Run the program:  java -jar UniversitySchedulerApp.jar 
- Use the buttons: 
-Schedule Exams → create schedule 
-Import Data → load new CSV files 
-Export → save the schedule 
+🖥️ How to Use the Program
 
- 
+Install Java 8 or a newer version on your computer. Place all CSV files into the CSV_Files folder and run the program using the command:
 
-📤 Output 
+java -jar UniversitySchedulerApp.jar
 
-Exam time 
-Classroom name 
-Easy table view 
-Can be saved as CSV or text file 
+You can then use the buttons in the interface to import data, create the exam schedule, and export the results.
 
- 
+📤 Output
 
-⚠️ Common Problems 
+The generated schedule includes exam times and classroom names, displayed in a clear table format. The schedule can be saved as a CSV or text file.
 
-No schedule found 
-Not enough time slots 
-Too many conflicts 
-Classroom too small 
-More students than classroom capacity 
-File not found 
-CSV files are in the wrong folder 
-Program does not start 
-Check Java 
+⚠️ Common Problems
 
- 
+In some cases, the program may not find a valid schedule. This can happen if there are not enough time slots, too many exam conflicts, classrooms with insufficient capacity, or incorrect or missing CSV files. If the program does not start, make sure Java is properly installed.
 
-📁 Project Structure 
+📁 Project Structure
 
-UniversitySchedulerApp.java → main file 
-gui/ → user interface 
-model/ → students, courses, classrooms 
-service/ → scheduling logic 
-parser/ → CSV file reader 
+UniversitySchedulerApp.java – main application file
 
- 
+gui/ – user interface components
 
-✅ Final Notes 
+model/ – student, course, and classroom classes
 
-Free to use for education 
-Easy to understand and change 
-Helps schools plan exams without stress
+service/ – scheduling logic
+
+parser/ – CSV file readers
+
+✅ Final Notes
+
+This program is free to use for educational purposes. It is easy to understand, modify, and extend, and it helps educational institutions plan exams efficiently and without stress.
