@@ -35,10 +35,12 @@ import java.util.Optional;
 public class SchedulerGUI extends JFrame {
 
     // Data lists
+
     private List<Student> students;
     private List<Classroom> classrooms;
     private List<Course> masterCourses;
     private List<Course> enrolledCourses;
+    private List<FixedExam> fixedExams;
     private JComboBox<String> courseSelector;
     private final StudentDAO studentDAO = new StudentDAO();
     private final CourseDAO courseDAO = new CourseDAO();
@@ -48,7 +50,7 @@ public class SchedulerGUI extends JFrame {
 
     // Scheduling Objects
     private ExamPeriod examPeriod;
-    private List<FixedExam> fixedExams = new ArrayList<>();
+
 
     // Navigation Buttons
     private JButton btnDashboard, btnImport, btnValidate, btnConfig, btnScheduler, btnResults, btnTimetable;
@@ -105,11 +107,12 @@ public class SchedulerGUI extends JFrame {
             );
 
 
-    public SchedulerGUI(List<Student> students, List<Classroom> classrooms, List<Course> masterCourses, List<Course> enrolledCourses) {
+    public SchedulerGUI(List<Student> students, List<Classroom> classrooms, List<Course> masterCourses, List<Course> enrolledCourses, List<FixedExam> fixedExams) {
         this.students = students;
         this.classrooms = classrooms;
         this.masterCourses = masterCourses;
         this.enrolledCourses = enrolledCourses;
+        this.fixedExams = fixedExams;
         // Default Configuration
         this.examPeriod = new ExamPeriod(5, 4);
         loadFromDatabaseIfAvailable();

@@ -228,13 +228,15 @@ public class UniversitySchedulerApp {
                 final List<Classroom> finalClassrooms = classrooms;
                 final List<Course> finalMasterCourses = masterCourses;
                 final List<Course> finalEnrolledCourses = masterCourses;
+                final List<FixedExam> finalFixedExams = fixedExams;
 
                 SwingUtilities.invokeLater(() -> {
                     SchedulerGUI gui = new SchedulerGUI(
                             finalStudents,
                             finalClassrooms,
                             finalMasterCourses,
-                            finalEnrolledCourses
+                            finalEnrolledCourses,
+                            finalFixedExams
                     );
                     gui.setVisible(true);
                 });
